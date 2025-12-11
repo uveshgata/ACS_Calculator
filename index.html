@@ -2,115 +2,487 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>ACS_Calculator</title>
+  <title>ACS Calculator - REPORT Card</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+
   <style>
-  /* ===== GLOBAL RESETS ===== */
-* {
-  box-sizing: border-box;
-  -webkit-tap-highlight-color: transparent;
-}
+    /* ===== Base ===== */
+    * {
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+    }
 
-body {
-  margin: 0;
-  padding: 16px;
-  font-family: "Inter", system-ui, -apple-system, BlinkMacSystemFont,
-    "Segoe UI", sans-serif;
-  background: #eef1f7;
-  display: flex;
-  justify-content: center;
-}
+    body {
+      margin: 0;
+      padding: 16px;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+        sans-serif;
+      background: radial-gradient(circle at top, #eef2ff, #e5e7eb);
+      display: flex;
+      justify-content: center;
+    }
 
-/* ===== LAYOUT WRAPPER ===== */
-.wrapper {
-  width: 100%;
-  max-width: 500px;
-}
+    .wrapper {
+      width: 100%;
+      max-width: 500px;
+    }
 
-/* ===== TITLE ===== */
-h1 {
-  text-align: center;
-  margin: 0 0 14px;
-  font-size: 22px;
-  font-weight: 700;
-  color: #1f2937;
-}
+    h1 {
+      text-align: center;
+      margin: 0 0 12px;
+      font-size: 22px;
+      font-weight: 700;
+      color: #111827;
+    }
 
-/* ===== CONTROLS / FORM SECTION ===== */
-.controls {
-  background: #ffffff;
-  border-radius: 14px;
-  padding: 14px;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
-}
+    /* ===== Controls / Form ===== */
+    .controls {
+      background: #ffffffaa;
+      backdrop-filter: blur(8px);
+      padding: 14px;
+      border-radius: 14px;
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.06);
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-bottom: 16px;
+    }
 
-.field {
-  flex: 1 1 150px;
-}
+    .field {
+      flex: 1 1 150px;
+      min-width: 140px;
+    }
 
-.field label {
-  font-size: 13px;
-  margin-bottom: 4px;
-  display: block;
-  color: #374151;
-}
+    .field label {
+      display: block;
+      font-size: 13px;
+      margin-bottom: 4px;
+      color: #374151;
+    }
 
-.field input {
-  width: 100%;
-  padding: 8px 10px;
-  border-radius: 8px;
-  border: 1px solid #d1d5db;
-  font-size: 14px;
-  outline: none;
-  transition: 0.2s;
-}
+    .field input {
+      width: 100%;
+      padding: 7px 9px;
+      border-radius: 8px;
+      border: 1px solid #d1d5db;
+      font-size: 14px;
+      outline: none;
+      transition: 0.15s;
+      background: #ffffff;
+    }
 
-.field input:focus {
-  border-color: #6366f1;
-  box-shadow: 0 0 0 2px #c7d2fe;
-}
+    .field input:focus {
+      border-color: #6366f1;
+      box-shadow: 0 0 0 2px #c7d2fe;
+    }
 
-/* ===== BUTTONS ===== */
-button {
-  border: none;
-  border-radius: 10px;
-  padding: 10px 14px;
-  font-size: 14px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: 0.2s;
-  width: 100%;
-}
+    .buttons {
+      flex: 1 1 150px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
 
-button.primary {
-  background: linear-gradient(135deg, #6366f1, #4f46e5);
-  color: white;
-}
+    button {
+      border: none;
+      border-radius: 999px;
+      padding: 10px 14px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: 0.15s;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+    }
 
-button.primary:hover {
-  opacity: 0.9;
-}
+    button.primary {
+      background: linear-gradient(135deg, #4f46e5, #7c3aed);
+      color: #ffffff;
+      box-shadow: 0 8px 18px rgba(88, 80, 236, 0.4);
+    }
 
-button.secondary {
-  background: #e5e7eb;
-  color: #1f2937;
-}
+    button.primary:hover:not(:disabled) {
+      transform: translateY(-1px);
+      box-shadow: 0 10px 22px rgba(88, 80, 236, 0.5);
+    }
 
-button:disabled {
-  opacity: 0.5;
-  cursor: default;
-}
+    button.secondary {
+      background: #e5e7eb;
+      color: #111827;
+    }
 
-/* ===== REPORT CARD ===== */
-#summaryCard {
-  width: 100%;
-  max-width: 480px;
-  background: #ffffff;
-  border-radius: 22px;
-  overflow: hidden;
+    button:disabled {
+      opacity: 0.5;
+      cursor: default;
+      box-shadow: none;
+      transform: none;
+    }
+
+    /* ===== REPORT Card ===== */
+    #summaryCard {
+      width: 100%;
+      max-width: 420px;
+      min-height: 640px;
+      background: #ffffff;
+      border-radius: 24px;
+      box-shadow: 0 12px 30px rgba(0, 0, 0, 0.12);
+      overflow: hidden;
+      margin: 18px auto 0;
+      display: none;          /* JS will show it */
+      display: flex;
+      flex-direction: column; /* header -> body -> footer */
+    }
+
+    .card-header {
+      padding: 20px 12px 16px;
+      background: linear-gradient(135deg, #8da4f3, #4f46e5);
+      color: white;
+      text-align: center;
+    }
+
+    .card-header h2 {
+      margin: 0;
+      font-size: 24px;
+      letter-spacing: 0.08em;
+    }
+
+    .card-header .range {
+      margin-top: 4px;
+      font-size: 13px;
+      opacity: 0.95;
+    }
+
+    .card-body {
+      padding: 16px 16px 8px;
+      font-size: 14px;
+      flex: 1; /* so footer sticks to bottom */
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+
+    thead th {
+      background: #f3f4ff;
+      color: #111827;
+      font-weight: 700;
+      padding: 8px 4px;
+      border-bottom: 1px solid #d1d5db;
+    }
+
+    tbody td {
+      padding: 10px 4px;
+      text-align: center;
+      border-bottom: 1px solid #e5e7eb;
+      color: #374151;
+    }
+
+    tfoot td {
+      padding: 10px 4px 12px;
+      font-weight: 700;
+      color: #111827;
+      border-top: 2px solid #d1d5db;
+    }
+
+    tfoot .total-label {
+      text-align: right;
+      padding-right: 10px;
+    }
+
+    tfoot .total-value {
+      font-weight: 800;
+      font-size: 14px;
+    }
+
+    .inputs-wrapper {
+      display: flex;
+      justify-content: center;
+      gap: 4px;
+    }
+
+    .inputs-wrapper input {
+      width: 62px;
+      padding: 4px;
+      border-radius: 6px;
+      border: 1px solid #d1d5db;
+      font-size: 12px;
+    }
+
+    /* ===== Footer inside card ===== */
+    .card-footer {
+      padding: 8px 16px 14px;
+      text-align: center;
+      font-size: 11px;
+      color: #9ca3af;
+      border-top: 1px solid #e5e7eb;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .card-footer .footer-line:last-child {
+      font-weight: 600;
+      color: #4f46e5;
+    }
+
+    /* ===== Export card (for PNG) ===== */
+    .export-card {
+      position: fixed;
+      left: -9999px;
+      top: 0;
+      width: 420px;        /* fixed width for consistent PNG */
+      background: #ffffff;
+      border-radius: 24px;
+      box-shadow: none;
+      margin: 0;
+    }
+
+    @media (max-width: 480px) {
+      body {
+        padding: 10px;
+      }
+      #summaryCard {
+        max-width: 100%;
+      }
+    }
+  </style>
+</head>
+<body>
+<div class="wrapper">
+  <h1>ACS Calculator</h1>
+
+  <!-- ===== Controls ===== -->
+  <div class="controls">
+    <div class="field">
+      <label>From date</label>
+      <input type="date" id="fromDate">
+    </div>
+    <div class="field">
+      <label>To date</label>
+      <input type="date" id="toDate">
+    </div>
+    <div class="field">
+      <label>Default rate (₹ / kg) (optional)</label>
+      <input type="number" id="defaultRate" step="0.01" min="0" placeholder="e.g. 230">
+    </div>
+    <div class="buttons">
+      <button class="primary" id="generateRowsBtn">Generate rows</button>
+      <button class="secondary" id="downloadImgBtn" disabled>Generate image</button>
+    </div>
+  </div>
+
+  <!-- ===== REPORT Card (shown + exported) ===== -->
+  <div id="summaryCard">
+    <div class="card-header">
+      <h2>REPORT Card</h2>
+      <div class="range" id="summaryRange"></div>
+    </div>
+
+    <div class="card-body">
+      <table>
+        <thead>
+        <tr>
+          <th>Total (₹)</th>
+          <th>Calculation</th>
+          <th>Date</th>
+        </tr>
+        </thead>
+        <tbody id="entriesBody"></tbody>
+        <tfoot>
+        <tr>
+          <td colspan="2" class="total-label">TOTAL:</td>
+          <td class="total-value" id="grandTotalCell">0</td>
+        </tr>
+        </tfoot>
+      </table>
+    </div>
+
+    <div class="card-footer">
+      <div class="footer-line">Generated with ACS_Calculator</div>
+      <div class="footer-line">Created By Mohammaduvesh Gata</div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== html2canvas for PNG export ===== -->
+<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+<script>
+  const fromDateInput = document.getElementById("fromDate");
+  const toDateInput = document.getElementById("toDate");
+  const defaultRateInput = document.getElementById("defaultRate");
+  const generateRowsBtn = document.getElementById("generateRowsBtn");
+  const downloadImgBtn = document.getElementById("downloadImgBtn");
+  const summaryCard = document.getElementById("summaryCard");
+  const entriesBody = document.getElementById("entriesBody");
+  const grandTotalCell = document.getElementById("grandTotalCell");
+  const summaryRange = document.getElementById("summaryRange");
+
+  function formatDateDisplay(d) {
+    const opts = { day: "2-digit", month: "long", year: "numeric" };
+    return d.toLocaleDateString("en-GB", opts);
+  }
+
+  function formatDateShort(d) {
+    const dd = String(d.getDate()).padStart(2, "0");
+    const mm = String(d.getMonth() + 1).padStart(2, "0");
+    const yyyy = d.getFullYear();
+    return `${dd}-${mm}-${yyyy}`;
+  }
+
+  function createRows() {
+    const fromVal = fromDateInput.value;
+    const toVal = toDateInput.value;
+
+    if (!fromVal || !toVal) {
+      alert("Please select both from and to dates.");
+      return;
+    }
+
+    const start = new Date(fromVal);
+    const end = new Date(toVal);
+
+    if (start > end) {
+      alert("From date cannot be after To date.");
+      return;
+    }
+
+    entriesBody.innerHTML = "";
+    let d = new Date(start);
+    const defaultRate = parseFloat(defaultRateInput.value);
+    const useDefaultRate = !isNaN(defaultRate);
+
+    while (d <= end) {
+      const tr = document.createElement("tr");
+
+      const totalTd = document.createElement("td");
+      totalTd.textContent = "0";
+
+      const calcTd = document.createElement("td");
+      const wrap = document.createElement("div");
+      wrap.className = "inputs-wrapper";
+
+      const kgInput = document.createElement("input");
+      kgInput.type = "number";
+      kgInput.placeholder = "kg";
+      kgInput.min = "0";
+      kgInput.step = "0.01";
+
+      const rateInput = document.createElement("input");
+      rateInput.type = "number";
+      rateInput.placeholder = "rate";
+      rateInput.min = "0";
+      rateInput.step = "0.01";
+      if (useDefaultRate) rateInput.value = defaultRate.toString();
+
+      wrap.appendChild(kgInput);
+      const multSpan = document.createElement("span");
+      multSpan.textContent = "×";
+      multSpan.style.alignSelf = "center";
+      wrap.appendChild(multSpan);
+      wrap.appendChild(rateInput);
+      calcTd.appendChild(wrap);
+
+      const dateTd = document.createElement("td");
+      dateTd.textContent = formatDateShort(d);
+
+      tr.appendChild(totalTd);
+      tr.appendChild(calcTd);
+      tr.appendChild(dateTd);
+      entriesBody.appendChild(tr);
+
+      function recalc() {
+        const kg = parseFloat(kgInput.value);
+        const rate = parseFloat(rateInput.value);
+        let rowTotal = 0;
+        if (!isNaN(kg) && !isNaN(rate)) {
+          rowTotal = kg * rate;
+        }
+        totalTd.textContent = rowTotal === 0 ? "0" : rowTotal.toFixed(0);
+        updateGrandTotal();
+      }
+
+      kgInput.addEventListener("input", recalc);
+      rateInput.addEventListener("input", recalc);
+
+      d.setDate(d.getDate() + 1);
+    }
+
+    summaryRange.textContent =
+      formatDateDisplay(start) + " to " + formatDateDisplay(end);
+
+    summaryCard.style.display = "flex";
+    downloadImgBtn.disabled = false;
+    updateGrandTotal();
+  }
+
+  function updateGrandTotal() {
+    let sum = 0;
+    entriesBody.querySelectorAll("tr").forEach(tr => {
+      const val = parseFloat(tr.firstChild.textContent);
+      if (!isNaN(val)) sum += val;
+    });
+    grandTotalCell.textContent =
+      sum === 0 ? "0" : sum.toLocaleString("en-IN");
+  }
+
+  // Build a hidden, text-only copy of the card for PNG export
+  function buildExportCard() {
+    const clone = summaryCard.cloneNode(true);
+    clone.id = "summaryCardExport";
+    clone.classList.add("export-card");
+
+    const cloneBody = clone.querySelector("tbody");
+    const cloneRows = cloneBody.querySelectorAll("tr");
+    const originalRows = entriesBody.querySelectorAll("tr");
+
+    cloneRows.forEach((row, idx) => {
+      const origRow = originalRows[idx];
+      if (!origRow) return;
+
+      const total = origRow.children[0].textContent;
+      const dateText = origRow.children[2].textContent;
+
+      const kgInput = origRow.querySelector("input[placeholder='kg']");
+      const rateInput = origRow.querySelector("input[placeholder='rate']");
+      const kg = kgInput && kgInput.value ? kgInput.value : "0";
+      const rate = rateInput && rateInput.value ? rateInput.value : "0";
+
+      row.children[0].textContent = total;
+      row.children[1].textContent = `${kg} × ${rate}`;
+      row.children[2].textContent = dateText;
+    });
+
+    document.body.appendChild(clone);
+    return clone;
+  }
+
+  async function downloadImage() {
+    if (summaryCard.style.display === "none") return;
+
+    const exportCard = buildExportCard();
+
+    const canvas = await html2canvas(exportCard, {
+      scale: 3,
+      backgroundColor: "#ffffff"
+    });
+
+    const link = document.createElement("a");
+    link.download = "report-card.png";
+    link.href = canvas.toDataURL("image/png");
+    link.click();
+
+    document.body.removeChild(exportCard);
+  }
+
+  generateRowsBtn.addEventListener("click", createRows);
+  downloadImgBtn.addEventListener("click", downloadImage);
+</script>
+</body>
+</html>  overflow: hidden;
   margin: 22px auto 0;
   display: none;
   display: flex;
