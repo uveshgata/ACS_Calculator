@@ -130,11 +130,10 @@
       box-shadow: 0 12px 30px rgba(0, 0, 0, 0.12);
       overflow: hidden;
       margin: 20px auto 0;
-      display: none;          /* JS will set to flex */
+      display: none;
       flex-direction: column; /* header → body → footer */
     }
 
-    /* Full-width gradient header */
     .card-header {
       padding: 22px 12px 18px;
       background: linear-gradient(135deg, #8da4f3, #4f46e5);
@@ -155,11 +154,10 @@
       opacity: 0.95;
     }
 
-    /* Body with table */
     .card-body {
       padding: 16px 16px 8px;
       font-size: 14px;
-      flex: 1; /* so footer sits at bottom */
+      flex: 1;
     }
 
     table {
@@ -184,20 +182,29 @@
     }
 
     tfoot td {
-      padding: 10px 4px 12px;
-      font-weight: 700;
+      padding: 8px 4px;
       color: #111827;
-      border-top: 2px solid #d1d5db;
     }
 
     tfoot .total-label {
       text-align: right;
       padding-right: 10px;
+      font-weight: 700;
+      border-top: 2px solid #d1d5db;
     }
 
     tfoot .total-value {
       font-weight: 800;
       font-size: 14px;
+      border-top: 2px solid #d1d5db;
+    }
+
+    /* NEW: days row style */
+    tfoot .days-label {
+      padding-top: 4px;
+      font-size: 12px;
+      color: #6b7280;
+      text-align: center;
     }
 
     .inputs-wrapper {
@@ -214,7 +221,6 @@
       font-size: 12px;
     }
 
-    /* Card footer (credits) */
     .card-footer {
       padding: 8px 16px 14px;
       text-align: center;
@@ -231,7 +237,6 @@
       color: #4f46e5;
     }
 
-    /* Hidden export card (for PNG) */
     .export-card {
       position: fixed;
       left: -9999px;
@@ -301,6 +306,10 @@
           <td colspan="2" class="total-label">TOTAL:</td>
           <td class="total-value" id="grandTotalCell">0</td>
         </tr>
+        <!-- NEW: Hindi days row -->
+        <tr>
+          <td colspan="3" class="days-label" id="daysLabel"> </td>
+        </tr>
         </tfoot>
       </table>
     </div>
@@ -324,6 +333,7 @@
   const entriesBody = document.getElementById("entriesBody");
   const grandTotalCell = document.getElementById("grandTotalCell");
   const summaryRange = document.getElementById("summaryRange");
+  const daysLabel = document.getElementById("daysLabel"); // NEW
 
   function formatDateDisplay(d) {
     const opts = { day: "2-digit", month: "long", year: "numeric" };
@@ -335,6 +345,17 @@
     const mm = String(d.getMonth() + 1).padStart(2, "0");
     const yyyy = d.getFullYear();
     return `${dd}-${mm}-${yyyy}`;
+  }
+
+  function setDaysLabel(start, end) {
+    const msPerDay = 24 * 60 * 60 * 1000;
+    const diff = Math.round((end - start) / msPerDay) + 1; // inclusive
+    if (diff > 0) {
+      // Hindi text: "कुल 8 दिन का हिसाब"
+      daysLabel.textContent = `कुल ${diff} दिन का हिसाब`;
+    } else {
+      daysLabel.textContent = "";
+    }
   }
 
   function createRows() {
@@ -417,6 +438,8 @@
 
     summaryRange.textContent =
       formatDateDisplay(start) + " to " + formatDateDisplay(end);
+
+    setDaysLabel(start, end); // NEW: set Hindi days text
 
     summaryCard.style.display = "flex";
     downloadImgBtn.disabled = false;
