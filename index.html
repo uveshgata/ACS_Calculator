@@ -199,7 +199,7 @@
       border-top: 2px solid #d1d5db;
     }
 
-    /* NEW: days row style */
+    /* Hindi days row */
     tfoot .days-label {
       padding-top: 4px;
       font-size: 12px;
@@ -281,6 +281,9 @@
     <div class="buttons">
       <button class="primary" id="generateRowsBtn">Generate rows</button>
       <button class="secondary" id="downloadImgBtn" disabled>Generate image</button>
+      <button class="secondary" onclick="window.location.href='daily-entry.html'">
+        Daily entry system
+      </button>
     </div>
   </div>
 
@@ -306,9 +309,8 @@
           <td colspan="2" class="total-label">TOTAL:</td>
           <td class="total-value" id="grandTotalCell">0</td>
         </tr>
-        <!-- NEW: Hindi days row -->
         <tr>
-          <td colspan="3" class="days-label" id="daysLabel"> </td>
+          <td colspan="3" class="days-label" id="daysLabel"></td>
         </tr>
         </tfoot>
       </table>
@@ -333,7 +335,19 @@
   const entriesBody = document.getElementById("entriesBody");
   const grandTotalCell = document.getElementById("grandTotalCell");
   const summaryRange = document.getElementById("summaryRange");
-  const daysLabel = document.getElementById("daysLabel"); // NEW
+  const daysLabel = document.getElementById("daysLabel");
+
+  const STORAGE_KEY = "acsEntries";
+
+  function getStoredEntries() {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      return raw ? JSON.parse(raw) : {};
+    } catch (e) {
+      console.error("Failed to parse entries", e);
+      return {};
+    }
+  }
 
   function formatDateDisplay(d) {
     const opts = { day: "2-digit", month: "long", year: "numeric" };
@@ -351,7 +365,6 @@
     const msPerDay = 24 * 60 * 60 * 1000;
     const diff = Math.round((end - start) / msPerDay) + 1; // inclusive
     if (diff > 0) {
-      // Hindi text: "कुल 8 दिन का हिसाब"
       daysLabel.textContent = `कुल ${diff} दिन का हिसाब`;
     } else {
       daysLabel.textContent = "";
@@ -374,6 +387,8 @@
       alert("From date cannot be after To date.");
       return;
     }
+
+    const storedEntries = getStoredEntries();
 
     entriesBody.innerHTML = "";
     let d = new Date(start);
@@ -401,7 +416,23 @@
       rateInput.placeholder = "rate";
       rateInput.min = "0";
       rateInput.step = "0.01";
-      if (useDefaultRate) rateInput.value = defaultRate.toString();
+
+      // Prepare key for this date: YYYY-MM-DD
+      const yyyy = d.getFullYear();
+      const mm = String(d.getMonth() + 1).padStart(2, "0");
+      const dd = String(d.getDate()).padStart(2, "0");
+      const isoKey = `${yyyy}-${mm}-${dd}`;
+      const saved = storedEntries[isoKey];
+
+      // Pre-fill from stored entries if present
+      if (saved) {
+        kgInput.value = saved.kg;
+        rateInput.value = saved.rate;
+        const rowTotal = saved.kg * saved.rate;
+        totalTd.textContent = rowTotal === 0 ? "0" : rowTotal.toFixed(0);
+      } else if (useDefaultRate) {
+        rateInput.value = defaultRate.toString();
+      }
 
       wrap.appendChild(kgInput);
       const multSpan = document.createElement("span");
@@ -439,7 +470,7 @@
     summaryRange.textContent =
       formatDateDisplay(start) + " to " + formatDateDisplay(end);
 
-    setDaysLabel(start, end); // NEW: set Hindi days text
+    setDaysLabel(start, end);
 
     summaryCard.style.display = "flex";
     downloadImgBtn.disabled = false;
