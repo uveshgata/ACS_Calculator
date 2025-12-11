@@ -5,10 +5,7 @@
   <title>ACS Calculator - Daily Entry</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
-    * {
-      box-sizing: border-box;
-      -webkit-tap-highlight-color: transparent;
-    }
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
     body {
       margin: 0;
       padding: 16px;
@@ -18,10 +15,7 @@
       display: flex;
       justify-content: center;
     }
-    .wrapper {
-      width: 100%;
-      max-width: 480px;
-    }
+    .wrapper { width: 100%; max-width: 480px; }
     h1 {
       text-align: center;
       margin: 0 0 12px;
@@ -94,7 +88,7 @@
       color: #6b7280;
       margin-top: 4px;
     }
-    .status {
+    .status-text {
       font-size: 12px;
       margin-top: 6px;
     }
@@ -110,7 +104,7 @@
     }
     .entry-item {
       font-size: 13px;
-      padding: 4px 0;
+      padding: 6px 6px;
       border-bottom: 1px solid #e5e7eb;
       display: flex;
       justify-content: space-between;
@@ -118,9 +112,7 @@
     }
     .entry-item:last-child { border-bottom: none; }
     .muted { color: #6b7280; }
-    #importFile {
-      display: none;
-    }
+    #importFile { display: none; }
   </style>
 </head>
 <body>
@@ -129,7 +121,10 @@
 
   <div class="top-actions">
     <button class="secondary" onclick="window.location.href='index.html'">
-      ← Back to Report Card
+      ← Report Card
+    </button>
+    <button class="secondary" onclick="window.location.href='bills.html'">
+      Bills / Payments
     </button>
     <button class="secondary" id="exportBtn">
       Export data (JSON)
@@ -154,7 +149,7 @@
     <input type="number" id="rate" placeholder="e.g. 230" step="0.01" min="0" />
 
     <button class="primary" id="saveBtn">Save entry</button>
-    <div class="status" id="statusMsg"></div>
+    <div class="status-text" id="statusMsg"></div>
     <div class="note">
       Entries are stored only in this browser (local).  
       Use Export / Import if you switch device.
@@ -162,7 +157,7 @@
   </div>
 
   <div class="list-card">
-    <h2>Saved entries</h2>
+    <h2>Saved entries (latest 15)</h2>
     <div id="entriesList" class="muted">No entries yet.</div>
   </div>
 </div>
@@ -185,7 +180,7 @@
   }
 
   function isoFromInput(val) {
-    return val; // input type="date" is already YYYY-MM-DD
+    return val;
   }
 
   const dateInput = document.getElementById("date");
@@ -201,22 +196,27 @@
 
   function refreshList() {
     const entries = getStoredEntries();
-    const keys = Object.keys(entries).sort();
+    let keys = Object.keys(entries).sort(); // ascending
     if (keys.length === 0) {
       entriesList.textContent = "No entries yet.";
       entriesList.classList.add("muted");
       return;
     }
+    if (keys.length > 15) keys = keys.slice(-15);
+    keys = keys.reverse(); // newest first
+
     entriesList.innerHTML = "";
     entriesList.classList.remove("muted");
+
     keys.forEach(date => {
       const e = entries[date];
+      const total = (e.kg || 0) * (e.rate || 0);
       const div = document.createElement("div");
       div.className = "entry-item";
       const left = document.createElement("span");
       left.textContent = date;
       const right = document.createElement("span");
-      right.textContent = `${e.kg} kg × ₹${e.rate}`;
+      right.textContent = `${e.kg} kg × ₹${e.rate} = ₹${total.toFixed(0)}`;
       div.appendChild(left);
       div.appendChild(right);
       entriesList.appendChild(div);
@@ -229,7 +229,6 @@
     const mm = String(today.getMonth() + 1).padStart(2, "0");
     const dd = String(today.getDate()).padStart(2, "0");
     dateInput.value = `${yyyy}-${mm}-${dd}`;
-    // pre-fill if exists
     const entries = getStoredEntries();
     const existing = entries[dateInput.value];
     if (existing) {
@@ -249,7 +248,7 @@
     }
     const iso = isoFromInput(dateVal);
     const entries = getStoredEntries();
-    entries[iso] = { kg, rate }; // overwrite if exists
+    entries[iso] = { kg, rate };
     setStoredEntries(entries);
     statusMsg.textContent = `Saved: ${iso} → ${kg} kg × ₹${rate}`;
     statusMsg.style.color = "#047857";
@@ -265,7 +264,6 @@
     }
   });
 
-  // EXPORT: download JSON
   exportBtn.addEventListener("click", () => {
     const entries = getStoredEntries();
     const keys = Object.keys(entries);
@@ -289,7 +287,6 @@
     statusMsg.style.color = "#047857";
   });
 
-  // IMPORT: select file
   importBtn.addEventListener("click", () => {
     importFile.click();
   });
@@ -313,7 +310,7 @@
             typeof entry.kg !== "undefined" &&
             typeof entry.rate !== "undefined"
           ) {
-            current[key] = { kg: entry.kg, rate: entry.rate }; // overwrite (Option A)
+            current[key] = { kg: entry.kg, rate: entry.rate };
             count++;
           }
         });
