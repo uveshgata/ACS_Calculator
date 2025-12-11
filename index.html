@@ -5,222 +5,225 @@
   <title>ACS_Calculator</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
-    * { box-sizing: border-box; }
+  /* ===== GLOBAL RESETS ===== */
+* {
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+}
 
-    body {
-      margin: 0;
-      padding: 16px;
-      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      background: radial-gradient(circle at top, #eef2ff, #e5e7eb);
-      display: flex;
-      justify-content: center;
-    }
+body {
+  margin: 0;
+  padding: 16px;
+  font-family: "Inter", system-ui, -apple-system, BlinkMacSystemFont,
+    "Segoe UI", sans-serif;
+  background: #eef1f7;
+  display: flex;
+  justify-content: center;
+}
 
-    .wrapper {
-      width: 100%;
-      max-width: 480px; /* great for portrait / phones */
-    }
+/* ===== LAYOUT WRAPPER ===== */
+.wrapper {
+  width: 100%;
+  max-width: 500px;
+}
 
-    h1 {
-      text-align: center;
-      margin: 0 0 12px;
-      font-size: 22px;
-    }
+/* ===== TITLE ===== */
+h1 {
+  text-align: center;
+  margin: 0 0 14px;
+  font-size: 22px;
+  font-weight: 700;
+  color: #1f2937;
+}
 
-    .controls {
-      background: #ffffffaa;
-      backdrop-filter: blur(8px);
-      padding: 12px;
-      border-radius: 12px;
-      box-shadow: 0 8px 20px rgba(0,0,0,0.06);
-      display: flex;
-      flex-wrap: wrap;
-      gap: 10px;
-      margin-bottom: 16px;
-    }
+/* ===== CONTROLS / FORM SECTION ===== */
+.controls {
+  background: #ffffff;
+  border-radius: 14px;
+  padding: 14px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
+}
 
-    .field {
-      flex: 1 1 160px;
-      min-width: 140px;
-    }
+.field {
+  flex: 1 1 150px;
+}
 
-    .field label {
-      display: block;
-      font-size: 13px;
-      margin-bottom: 4px;
-      color: #374151;
-    }
+.field label {
+  font-size: 13px;
+  margin-bottom: 4px;
+  display: block;
+  color: #374151;
+}
 
-    .field input {
-      width: 100%;
-      padding: 7px 8px;
-      border-radius: 8px;
-      border: 1px solid #d1d5db;
-      font-size: 14px;
-    }
+.field input {
+  width: 100%;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid #d1d5db;
+  font-size: 14px;
+  outline: none;
+  transition: 0.2s;
+}
 
-    .buttons {
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-      flex: 1 1 160px;
-    }
+.field input:focus {
+  border-color: #6366f1;
+  box-shadow: 0 0 0 2px #c7d2fe;
+}
 
-    button {
-      border: none;
-      border-radius: 999px;
-      padding: 10px 14px;
-      font-size: 14px;
-      font-weight: 600;
-      cursor: pointer;
-      transition: transform 0.06s ease, box-shadow 0.06s ease, opacity 0.1s;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      gap: 6px;
-    }
+/* ===== BUTTONS ===== */
+button {
+  border: none;
+  border-radius: 10px;
+  padding: 10px 14px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: 0.2s;
+  width: 100%;
+}
 
-    button.primary {
-      background: linear-gradient(135deg, #4f46e5, #7c3aed);
-      color: #fff;
-      box-shadow: 0 8px 18px rgba(88, 80, 236, 0.4);
-    }
+button.primary {
+  background: linear-gradient(135deg, #6366f1, #4f46e5);
+  color: white;
+}
 
-    button.secondary {
-      background: #e5e7eb;
-      color: #111827;
-    }
+button.primary:hover {
+  opacity: 0.9;
+}
 
-    button:hover:not(:disabled) {
-      transform: translateY(-1px);
-      box-shadow: 0 10px 22px rgba(0,0,0,0.12);
-    }
+button.secondary {
+  background: #e5e7eb;
+  color: #1f2937;
+}
 
-    button:disabled {
-      opacity: 0.5;
-      cursor: default;
-      box-shadow: none;
-      transform: none;
-    }
+button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
 
-    /* ========== CARD TO EXPORT AS IMAGE ========== */
+/* ===== REPORT CARD ===== */
+#summaryCard {
+  width: 100%;
+  max-width: 480px;
+  background: #ffffff;
+  border-radius: 22px;
+  overflow: hidden;
+  margin: 22px auto 0;
+  display: none;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 10px 32px rgba(0, 0, 0, 0.12);
+}
 
-    .card-container {
-      display: flex;
-      justify-content: center;
-    }
+/* ===== HEADER SECTION ===== */
+.card-header {
+  padding: 22px 12px 18px;
+  background: linear-gradient(135deg, #8da4f3, #4f46e5);
+  color: white;
+  text-align: center;
+}
 
-    #summaryCard {
-      width: 100%;
-      max-width: 420px;       /* portrait-feel */
-      min-height: 640px;      /* portrait height */
-      background: #ffffff;
-      border-radius: 24px;
-      box-shadow: 0 12px 30px rgba(0,0,0,0.12);
-      overflow: hidden;
-      display: none;          /* shown after generating rows */
-      margin: 8px auto 0;
-      position: relative;
-    }
+.card-header h2 {
+  margin: 0;
+  font-size: 24px;
+  font-weight: 700;
+}
 
-    .card-header {
-      padding: 18px 18px 16px;
-      background: radial-gradient(circle at top left, #a5b4fc, #4f46e5);
-      color: white;
-      text-align: center;
-    }
+.card-header .range {
+  font-size: 13px;
+  margin-top: 4px;
+  opacity: 0.95;
+}
 
-    .card-header h2 {
-      margin: 0;
-      font-size: 24px;
-      letter-spacing: 0.08em;
-    }
+/* ===== TABLE SECTION ===== */
+.card-body {
+  padding: 16px 14px 6px;
+  flex: 1;
+}
 
-    .card-header .range {
-      margin-top: 4px;
-      font-size: 13px;
-      opacity: 0.95;
-    }
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
 
-    .card-body {
-      padding: 16px 18px 20px;
-      font-size: 14px;
-    }
+thead th {
+  background: #f4f5ff;
+  padding: 10px 4px;
+  border-bottom: 2px solid #e5e7eb;
+  font-weight: 700;
+  color: #1e293b;
+}
 
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      font-size: 13px;
-    }
+tbody td {
+  text-align: center;
+  padding: 10px 4px;
+  border-bottom: 1px solid #e5e7eb;
+  color: #374151;
+}
 
-    thead th {
-      background: #f3f4ff;
-      color: #111827;
-      font-weight: 700;
-      padding: 8px 4px;
-      border-bottom: 1px solid #d1d5db;
-    }
+tfoot td {
+  padding: 12px 6px;
+  font-weight: 700;
+  color: #111827;
+  border-top: 2px solid #d1d5db;
+}
 
-    tbody td, tfoot td {
-      padding: 8px 4px;
-      text-align: center;
-      border-bottom: 1px solid #e5e7eb;
-    }
+tfoot .total-label {
+  text-align: right;
+  padding-right: 10px;
+}
 
-    tbody tr:last-child td {
-      border-bottom: none;
-    }
+tfoot .total-value {
+  font-size: 15px;
+  font-weight: 800;
+  color: #111827;
+}
 
-    tfoot .total-label {
-      text-align: right;
-      font-weight: 700;
-      padding-right: 10px;
-    }
+/* ===== INPUT GROUP INSIDE TABLE ===== */
+.inputs-wrapper {
+  display: flex;
+  justify-content: center;
+  gap: 4px;
+}
 
-    tfoot .total-value {
-      font-weight: 800;
-      color: #111827;
-    }
+.inputs-wrapper input {
+  width: 60px;
+  padding: 5px;
+  border-radius: 6px;
+  border: 1px solid #d1d5db;
+  font-size: 13px;
+}
 
-    .inputs-wrapper {
-      display: flex;
-      justify-content: center;
-      gap: 4px;
-    }
+/* ===== FOOTER SECTION ===== */
+.card-footer {
+  padding: 12px 14px 16px;
+  text-align: center;
+  font-size: 12px;
+  color: #6b7280;
+  border-top: 1px solid #e5e7eb;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
 
-    .inputs-wrapper input {
-      width: 70px;
-      padding: 4px;
-      border-radius: 6px;
-      border: 1px solid #d1d5db;
-      font-size: 12px;
-    }
+.card-footer strong {
+  color: #4f46e5;
+}
 
-    .footer-note {
-      position: absolute;
-      bottom: 10px;
-      width: 100%;
-      text-align: center;
-      font-size: 11px;
-      color: #9ca3af;
-    }
-    /* Hidden export-only card (for image generation) */
-    .export-card {
-      position: fixed;
-      left: -9999px;           /* keep it off-screen */
-      top: 0;
-      box-shadow: none;        /* no outer shadow in final PNG */
-      margin: 0;
-    }
-    
-    @media (max-width: 480px) {
-      body { padding: 12px; }
-      #summaryCard {
-        max-width: 100%;
-        border-radius: 20px;
-      }
-    }
-  </style>
+/* ===== EXPORT CARD (PNG generation) ===== */
+.export-card {
+  position: fixed;
+  left: -9999px;
+  top: 0;
+  width: 480px;
+  background: #ffffff;
+  border-radius: 22px;
+}
+</style>
 </head>
 <body>
 <div class="wrapper">
