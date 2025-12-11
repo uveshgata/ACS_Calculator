@@ -204,7 +204,15 @@
       font-size: 11px;
       color: #9ca3af;
     }
-
+    /* Hidden export-only card (for image generation) */
+    .export-card {
+      position: fixed;
+      left: -9999px;           /* keep it off-screen */
+      top: 0;
+      box-shadow: none;        /* no outer shadow in final PNG */
+      margin: 0;
+    }
+    
     @media (max-width: 480px) {
       body { padding: 12px; }
       #summaryCard {
@@ -263,7 +271,8 @@
         </table>
       </div>
       <div class="footer-note">
-        Generated with your summary app
+        Generated with ACS_Calculator
+        <h3>Created By Mohammaduvesh Gata </h3>
       </div>
     </div>
   </div>
@@ -372,7 +381,7 @@
       d.setDate(d.getDate() + 1);
     }
 
-    // range text for header
+    // text under REPORT card title
     summaryRange.textContent =
       formatDateDisplay(start) + " to " + formatDateDisplay(end);
 
@@ -387,23 +396,65 @@
       const val = parseFloat(tr.firstChild.textContent);
       if (!isNaN(val)) sum += val;
     });
-    grandTotalCell.textContent = sum === 0 ? "0" : sum.toLocaleString("en-IN");
+    grandTotalCell.textContent =
+      sum === 0 ? "0" : sum.toLocaleString("en-IN");
+  }
+
+  // build a clean clone of the card, with TEXT only (no inputs)
+  function buildExportCard() {
+    const clone = summaryCard.cloneNode(true);
+    clone.id = "summaryCardExport";
+    clone.classList.add("export-card");     // off-screen & no shadow
+
+    const tbody = clone.querySelector("tbody");
+    const originalRows = entriesBody.querySelectorAll("tr");
+    const cloneRows = tbody.querySelectorAll("tr");
+
+    cloneRows.forEach((row, idx) => {
+      const origRow = originalRows[idx];
+      if (!origRow) return;
+
+      const origTotal = origRow.children[0].textContent;
+      const calcCellClone = row.children[1];
+      const dateCellClone = row.children[2];
+
+      // get kg & rate from original inputs
+      const kgInput = origRow.querySelector("input[placeholder='kg']");
+      const rateInput = origRow.querySelector("input[placeholder='rate']");
+      const kg = kgInput && kgInput.value ? kgInput.value : "0";
+      const rate = rateInput && rateInput.value ? rateInput.value : "0";
+
+      // set cells as plain text
+      row.children[0].textContent = origTotal;
+      calcCellClone.textContent = `${kg} × ${rate}`;
+      dateCellClone.textContent = origRow.children[2].textContent;
+    });
+
+    document.body.appendChild(clone);
+    return clone;
   }
 
   async function downloadImage() {
-    // higher scale = sharper PNG on phones
-    const canvas = await html2canvas(summaryCard, {
+    if (summaryCard.style.display === "none") return;
+
+    const exportCard = buildExportCard();
+
+    const canvas = await html2canvas(exportCard, {
       scale: 3,
       backgroundColor: "#ffffff"
     });
+
     const link = document.createElement("a");
-    link.download = "summary-sheet.png";
+    link.download = "report-card.png";
     link.href = canvas.toDataURL("image/png");
     link.click();
+
+    document.body.removeChild(exportCard); // clean up
   }
 
   generateRowsBtn.addEventListener("click", createRows);
   downloadImgBtn.addEventListener("click", downloadImage);
 </script>
+
 </body>
 </html>
