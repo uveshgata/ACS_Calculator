@@ -102,15 +102,64 @@
       margin: 0 0 8px;
       font-size: 15px;
     }
+
     .entry-item {
       font-size: 13px;
-      padding: 6px 6px;
+      padding: 6px 8px;
       border-bottom: 1px solid #e5e7eb;
       display: flex;
       justify-content: space-between;
+      align-items: center;
       gap: 6px;
+      border-radius: 8px;
+      margin-bottom: 4px;
+      background: #f9fafb;
+      border: 1px solid transparent;
     }
     .entry-item:last-child { border-bottom: none; }
+
+    /* color per status by bill-range */
+    .entry-pending {
+      background: #f9fafb;
+      border-color: #e5e7eb;
+    }
+    .entry-loading {
+      background: #fefce8;   /* yellow tint */
+      border-color: #facc15;
+    }
+    .entry-success {
+      background: #ecfdf5;   /* green tint */
+      border-color: #16a34a;
+    }
+
+    .entry-left {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+    .entry-date {
+      font-weight: 600;
+      color: #111827;
+    }
+    .entry-status-pill {
+      font-size: 11px;
+      padding: 1px 7px;
+      border-radius: 999px;
+      display: inline-block;
+    }
+    .pill-pending {
+      background: #e5e7eb;
+      color: #374151;
+    }
+    .pill-loading {
+      background: #fef3c7;
+      color: #92400e;
+    }
+    .pill-success {
+      background: #dcfce7;
+      color: #166534;
+    }
+
     .muted { color: #6b7280; }
     #importFile { display: none; }
   </style>
@@ -163,35 +212,71 @@
 </div>
 
 <script>
-  const STORAGE_KEY = "acsEntries";
+  const ENTRIES_KEY = "acsEntries";
+  const BILLS_KEY   = "acsBills";
 
   function getStoredEntries() {
     try {
-      const raw = localStorage.getItem(STORAGE_KEY);
+      const raw = localStorage.getItem(ENTRIES_KEY);
       return raw ? JSON.parse(raw) : {};
     } catch (e) {
       console.error("Failed to parse storage", e);
       return {};
     }
   }
-
   function setStoredEntries(obj) {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(obj));
+    localStorage.setItem(ENTRIES_KEY, JSON.stringify(obj));
   }
 
-  function isoFromInput(val) {
-    return val;
+  function getBills() {
+    try {
+      const raw = localStorage.getItem(BILLS_KEY);
+      return raw ? JSON.parse(raw) : [];
+    } catch (e) {
+      console.error("Failed to parse bills", e);
+      return [];
+    }
   }
 
-  const dateInput = document.getElementById("date");
-  const kgInput = document.getElementById("kg");
-  const rateInput = document.getElementById("rate");
-  const saveBtn = document.getElementById("saveBtn");
-  const statusMsg = document.getElementById("statusMsg");
-  const entriesList = document.getElementById("entriesList");
-  const clearAllBtn = document.getElementById("clearAllBtn");
-  const exportBtn = document.getElementById("exportBtn");
-  const importBtn = document.getElementById("importBtn");
+  function statusFromAmounts(bill) {
+    const total = bill.total || 0;
+    const paid  = bill.paid  || 0;
+    if (total <= 0) return "pending";
+    if (paid <= 0) return "pending";
+    if (paid < total) return "loading";
+    return "success";
+  }
+
+  // for one date, figure out if it belongs to any bill(s) and get strongest status
+  function statusForDate(dateIso) {
+    const bills = getBills();
+    const order = { pending: 1, loading: 2, success: 3 };
+    let bestStatus = null;
+
+    bills.forEach(bill => {
+      if (!bill.from || !bill.to) return;
+      if (bill.from <= dateIso && dateIso <= bill.to) {
+        const s = statusFromAmounts(bill);
+        if (!bestStatus || order[s] > order[bestStatus]) {
+          bestStatus = s;
+        }
+      }
+    });
+
+    return bestStatus; // null if not in any bill
+  }
+
+  function isoFromInput(val) { return val; }
+
+  const dateInput  = document.getElementById("date");
+  const kgInput    = document.getElementById("kg");
+  const rateInput  = document.getElementById("rate");
+  const saveBtn    = document.getElementById("saveBtn");
+  const statusMsg  = document.getElementById("statusMsg");
+  const entriesList= document.getElementById("entriesList");
+  const clearAllBtn= document.getElementById("clearAllBtn");
+  const exportBtn  = document.getElementById("exportBtn");
+  const importBtn  = document.getElementById("importBtn");
   const importFile = document.getElementById("importFile");
 
   function refreshList() {
@@ -208,18 +293,45 @@
     entriesList.innerHTML = "";
     entriesList.classList.remove("muted");
 
-    keys.forEach(date => {
-      const e = entries[date];
+    keys.forEach(dateIso => {
+      const e = entries[dateIso];
       const total = (e.kg || 0) * (e.rate || 0);
-      const div = document.createElement("div");
-      div.className = "entry-item";
-      const left = document.createElement("span");
-      left.textContent = date;
+
+      const status = statusForDate(dateIso); // null | pending | loading | success
+
+      const item = document.createElement("div");
+      item.className = "entry-item";
+      if (status === "pending") item.classList.add("entry-pending");
+      if (status === "loading") item.classList.add("entry-loading");
+      if (status === "success") item.classList.add("entry-success");
+
+      const left = document.createElement("div");
+      left.className = "entry-left";
+
+      const dateSpan = document.createElement("span");
+      dateSpan.className = "entry-date";
+      dateSpan.textContent = dateIso;
+
+      left.appendChild(dateSpan);
+
+      if (status) {
+        const pill = document.createElement("span");
+        pill.className = "entry-status-pill " +
+          (status === "pending" ? "pill-pending" :
+           status === "loading" ? "pill-loading" : "pill-success");
+        pill.textContent =
+          status === "pending" ? "Pending bill" :
+          status === "loading" ? "Bill partial / waiting" :
+          "Bill paid";
+        left.appendChild(pill);
+      }
+
       const right = document.createElement("span");
       right.textContent = `${e.kg} kg × ₹${e.rate} = ₹${total.toFixed(0)}`;
-      div.appendChild(left);
-      div.appendChild(right);
-      entriesList.appendChild(div);
+
+      item.appendChild(left);
+      item.appendChild(right);
+      entriesList.appendChild(item);
     });
   }
 
@@ -239,7 +351,7 @@
 
   saveBtn.addEventListener("click", () => {
     const dateVal = dateInput.value;
-    const kg = parseFloat(kgInput.value);
+    const kg   = parseFloat(kgInput.value);
     const rate = parseFloat(rateInput.value);
     if (!dateVal || isNaN(kg) || isNaN(rate)) {
       statusMsg.textContent = "Please enter date, kg and rate.";
@@ -257,7 +369,7 @@
 
   clearAllBtn.addEventListener("click", () => {
     if (confirm("Clear all saved entries?")) {
-      localStorage.removeItem(STORAGE_KEY);
+      localStorage.removeItem(ENTRIES_KEY);
       refreshList();
       statusMsg.textContent = "All entries cleared.";
       statusMsg.style.color = "#b91c1c";
