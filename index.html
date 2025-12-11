@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>ACS Calculator</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    * { box-sizing: border-box; }
+
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #f4f4f4;
+      margin: 0;
+      padding: 20px;
+      display: flex;
+      justify-content: center;
+    }
+
+    .wrapper {
+      max-width: 900px;
+      width: 100%;
+    }
+
+    h1 {
+      text-align: center;
+      margin-bottom: 10px;
+    }
+
+    .controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-bottom: 20px;
+      background: #fff;
+      padding: 15px;
+      border-radius: 10px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    }
+
+    .controls label {
+      font-size: 14px;
+      display: block;
+      margin-bottom: 4px;
+    }
+
+    .controls input {
+      padding: 6px 8px;
+      font-size: 14px;
+      width: 100%;
+    }
+
+    .field {
+      flex: 1 1 160px;
+      min-width: 150px;
+    }
+
+    button {
+      cursor: pointer;
+      border: none;
+      border-radius: 6px;
+      padding: 10px 16px;
+      font-size: 14px;
+      font-weight: 600;
+      background: #111827;
+      color: #fff;
+      transition: transform 0.05s ease, box-shadow 0.05s ease;
+    }
+
+    button:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+    }
+
+    button:disabled {
+      opacity: 0.5;
+      cursor: default;
+      box-shadow: none;
+      transform: none;
+    }
+
+    /* Card that we will turn into an image */
+    .card {
+      margin-top: 20px;
+      background: #fff;
+      padding: 20px;
+      border-radius: 10px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    }
+
+    .summary-title {
+      text-align: center;
+      font-weight: 700;
+      font-size: 26px;
+      margin-bottom: 4px;
+    }
+
+    .summary-range {
+      text-align: center;
+      font-size: 14px;
+      margin-bottom: 16px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 14px;
+    }
+
+    th, td {
+      border: 1px solid #111;
+      padding: 8px 6px;
+      text-align: center;
+    }
+
+    th {
+      font-weight: 700;
+    }
+
+    tfoot td {
+      font-weight: 700;
+    }
+
+    .footer-row td {
+      border-top: 2px solid #000;
+    }
+  </style>
+</head>
+<body>
+<div class="wrapper">
+  <h1>Daily Amount Calculator</h1>
+
+  <div class="controls">
+    <div class="field">
+      <label>From date</label>
+      <input type="date" id="fromDate" />
+    </div>
+    <div class="field">
+      <label>To date</label>
+      <input type="date" id="toDate" />
+    </div>
+
+    <div class="field">
+      <label>Default rate (₹ per kg) – optional</label>
+      <input type="number" id="defaultRate" step="0.01" min="0" placeholder="e.g. 230" />
+    </div>
+
+    <div class="field" style="display:flex;align-items:flex-end;gap:8px;">
+      <button id="generateRowsBtn">Generate rows</button>
+      <button id="downloadImgBtn" disabled>Generate image</button>
+    </div>
+  </div>
+
+  <!-- Card that will be converted to PNG -->
+  <div id="summaryCard" class="card" style="display:none;">
+    <div class="summary-title">SUMMARY</div>
+    <div class="summary-range" id="summaryRange"></div>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Total (₹)</th>
+          <th>Calculation</th>
+          <th>Date</th>
+        </tr>
+      </thead>
+      <tbody id="entriesBody"></tbody>
+      <tfoot>
+        <tr class="footer-row">
+          <td colspan="2">TOTAL:</td>
+          <td id="grandTotalCell">0</td>
+        </tr>
+      </tfoot>
+    </table>
+  </div>
+</div>
+
+<!-- html2canvas from CDN for “Generate image” -->
+<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+<script>
+  const fromDateInput = document.getElementById("fromDate");
+  const toDateInput = document.getElementById("toDate");
+  const defaultRateInput = document.getElementById("defaultRate");
+  const generateRowsBtn = document.getElementById("generateRowsBtn");
+  const downloadImgBtn = document.getElementById("downloadImgBtn");
+  const summaryCard = document.getElementById("summaryCard");
+  const entriesBody = document.getElementById("entriesBody");
+  const grandTotalCell = document.getElementById("grandTotalCell");
+  const summaryRange = document.getElementById("summaryRange");
+
+  function formatDateDisplay(d) {
+    const opts = { day: "2-digit", month: "long", year: "numeric" };
+    return d.toLocaleDateString("en-GB", opts); // 02 December 2025
+  }
+
+  function formatDateShort(d) {
+    const dd = String(d.getDate()).padStart(2, "0");
+    const mm = String(d.getMonth() + 1).padStart(2, "0");
+    const yyyy = d.getFullYear();
+    return `${dd}-${mm}-${yyyy}`;
+  }
+
+  function createRows() {
+    const fromVal = fromDateInput.value;
+    const toVal = toDateInput.value;
+
+    if (!fromVal || !toVal) {
+      alert("Please select both from and to dates.");
+      return;
+    }
+
+    const start = new Date(fromVal);
+    const end = new Date(toVal);
+
+    if (start > end) {
+      alert("From date cannot be after To date.");
+      return;
+    }
+
+    // clear old rows
+    entriesBody.innerHTML = "";
+    let d = new Date(start);
+    const defaultRate = parseFloat(defaultRateInput.value);
+    const useDefaultRate = !isNaN(defaultRate);
+
+    // loop through dates inclusive
+    while (d <= end) {
+      const tr = document.createElement("tr");
+
+      const totalTd = document.createElement("td");
+      totalTd.textContent = "0";
+
+      const calcTd = document.createElement("td");
+      const kgInput = document.createElement("input");
+      kgInput.type = "number";
+      kgInput.step = "0.01";
+      kgInput.min = "0";
+      kgInput.placeholder = "kg";
+
+      const rateInput = document.createElement("input");
+      rateInput.type = "number";
+      rateInput.step = "0.01";
+      rateInput.min = "0";
+      rateInput.placeholder = "rate";
+      if (useDefaultRate) rateInput.value = defaultRate.toString();
+
+      // calculation display: "kg × rate"
+      const calcWrapper = document.createElement("div");
+      calcWrapper.style.display = "flex";
+      calcWrapper.style.justifyContent = "center";
+      calcWrapper.style.gap = "4px";
+
+      calcWrapper.appendChild(kgInput);
+      const multSpan = document.createElement("span");
+      multSpan.textContent = "×";
+      calcWrapper.appendChild(multSpan);
+      calcWrapper.appendChild(rateInput);
+
+      calcTd.appendChild(calcWrapper);
+
+      const dateTd = document.createElement("td");
+      dateTd.textContent = formatDateShort(d);
+
+      tr.appendChild(totalTd);
+      tr.appendChild(calcTd);
+      tr.appendChild(dateTd);
+      entriesBody.appendChild(tr);
+
+      function recalc() {
+        const kg = parseFloat(kgInput.value);
+        const rate = parseFloat(rateInput.value);
+        let rowTotal = 0;
+        if (!isNaN(kg) && !isNaN(rate)) {
+          rowTotal = kg * rate;
+        }
+        totalTd.textContent = rowTotal === 0 ? "0" : rowTotal.toFixed(0); // no decimals, like 2300
+        updateGrandTotal();
+      }
+
+      kgInput.addEventListener("input", recalc);
+      rateInput.addEventListener("input", recalc);
+
+      // move to next day
+      d.setDate(d.getDate() + 1);
+    }
+
+    // set summary range text
+    summaryRange.textContent =
+      "(" + formatDateDisplay(start) + " to " + formatDateDisplay(end) + ")";
+
+    summaryCard.style.display = "block";
+    downloadImgBtn.disabled = false;
+    updateGrandTotal();
+  }
+
+  function updateGrandTotal() {
+    let sum = 0;
+    entriesBody.querySelectorAll("tr").forEach(tr => {
+      const val = parseFloat(tr.firstChild.textContent);
+      if (!isNaN(val)) sum += val;
+    });
+    grandTotalCell.textContent = sum === 0 ? "0" : sum.toLocaleString("en-IN");
+  }
+
+  async function downloadImage() {
+    const canvas = await html2canvas(summaryCard, { scale: 2 });
+    const link = document.createElement("a");
+    link.download = "summary.png";
+    link.href = canvas.toDataURL("image/png");
+    link.click();
+  }
+
+  generateRowsBtn.addEventListener("click", createRows);
+  downloadImgBtn.addEventListener("click", downloadImage);
+</script>
+</body>
+</html>
