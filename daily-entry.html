@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>ACS Calculator - Daily Entry</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    * {
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+    }
+    body {
+      margin: 0;
+      padding: 16px;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+        sans-serif;
+      background: radial-gradient(circle at top, #eef2ff, #e5e7eb);
+      display: flex;
+      justify-content: center;
+    }
+    .wrapper {
+      width: 100%;
+      max-width: 480px;
+    }
+    h1 {
+      text-align: center;
+      margin: 0 0 12px;
+      font-size: 22px;
+      font-weight: 700;
+      color: #111827;
+    }
+    .top-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+    button {
+      border: none;
+      border-radius: 999px;
+      padding: 8px 12px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: .15s;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      white-space: nowrap;
+    }
+    button.primary {
+      background: linear-gradient(135deg, #4f46e5, #7c3aed);
+      color: white;
+      box-shadow: 0 6px 14px rgba(88,80,236,0.35);
+    }
+    button.secondary {
+      background: #e5e7eb;
+      color: #111827;
+    }
+    button.danger {
+      background: #fee2e2;
+      color: #b91c1c;
+    }
+    .card {
+      background: #ffffffaa;
+      backdrop-filter: blur(8px);
+      padding: 16px;
+      border-radius: 16px;
+      box-shadow: 0 8px 20px rgba(0,0,0,0.08);
+      margin-bottom: 16px;
+    }
+    label {
+      display: block;
+      font-size: 13px;
+      margin-bottom: 4px;
+      color: #374151;
+    }
+    input {
+      width: 100%;
+      padding: 8px 10px;
+      border-radius: 8px;
+      border: 1px solid #d1d5db;
+      font-size: 14px;
+      margin-bottom: 10px;
+      outline: none;
+      transition: .15s;
+    }
+    input:focus {
+      border-color: #6366f1;
+      box-shadow: 0 0 0 2px #c7d2fe;
+    }
+    .note {
+      font-size: 12px;
+      color: #6b7280;
+      margin-top: 4px;
+    }
+    .status {
+      font-size: 12px;
+      margin-top: 6px;
+    }
+    .list-card {
+      background: #ffffff;
+      padding: 12px 14px;
+      border-radius: 14px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+    }
+    .list-card h2 {
+      margin: 0 0 8px;
+      font-size: 15px;
+    }
+    .entry-item {
+      font-size: 13px;
+      padding: 4px 0;
+      border-bottom: 1px solid #e5e7eb;
+      display: flex;
+      justify-content: space-between;
+      gap: 6px;
+    }
+    .entry-item:last-child { border-bottom: none; }
+    .muted { color: #6b7280; }
+    #importFile {
+      display: none;
+    }
+  </style>
+</head>
+<body>
+<div class="wrapper">
+  <h1>Daily Entry</h1>
+
+  <div class="top-actions">
+    <button class="secondary" onclick="window.location.href='index.html'">
+      ← Back to Report Card
+    </button>
+    <button class="secondary" id="exportBtn">
+      Export data (JSON)
+    </button>
+    <button class="secondary" id="importBtn">
+      Import data (JSON)
+    </button>
+    <button class="danger" id="clearAllBtn">
+      Clear all entries
+    </button>
+    <input type="file" id="importFile" accept="application/json" />
+  </div>
+
+  <div class="card">
+    <label for="date">Date</label>
+    <input type="date" id="date" />
+
+    <label for="kg">Quantity (kg)</label>
+    <input type="number" id="kg" placeholder="e.g. 10" step="0.01" min="0" />
+
+    <label for="rate">Rate (₹ per kg)</label>
+    <input type="number" id="rate" placeholder="e.g. 230" step="0.01" min="0" />
+
+    <button class="primary" id="saveBtn">Save entry</button>
+    <div class="status" id="statusMsg"></div>
+    <div class="note">
+      Entries are stored only in this browser (local).  
+      Use Export / Import if you switch device.
+    </div>
+  </div>
+
+  <div class="list-card">
+    <h2>Saved entries</h2>
+    <div id="entriesList" class="muted">No entries yet.</div>
+  </div>
+</div>
+
+<script>
+  const STORAGE_KEY = "acsEntries";
+
+  function getStoredEntries() {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      return raw ? JSON.parse(raw) : {};
+    } catch (e) {
+      console.error("Failed to parse storage", e);
+      return {};
+    }
+  }
+
+  function setStoredEntries(obj) {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(obj));
+  }
+
+  function isoFromInput(val) {
+    return val; // input type="date" is already YYYY-MM-DD
+  }
+
+  const dateInput = document.getElementById("date");
+  const kgInput = document.getElementById("kg");
+  const rateInput = document.getElementById("rate");
+  const saveBtn = document.getElementById("saveBtn");
+  const statusMsg = document.getElementById("statusMsg");
+  const entriesList = document.getElementById("entriesList");
+  const clearAllBtn = document.getElementById("clearAllBtn");
+  const exportBtn = document.getElementById("exportBtn");
+  const importBtn = document.getElementById("importBtn");
+  const importFile = document.getElementById("importFile");
+
+  function refreshList() {
+    const entries = getStoredEntries();
+    const keys = Object.keys(entries).sort();
+    if (keys.length === 0) {
+      entriesList.textContent = "No entries yet.";
+      entriesList.classList.add("muted");
+      return;
+    }
+    entriesList.innerHTML = "";
+    entriesList.classList.remove("muted");
+    keys.forEach(date => {
+      const e = entries[date];
+      const div = document.createElement("div");
+      div.className = "entry-item";
+      const left = document.createElement("span");
+      left.textContent = date;
+      const right = document.createElement("span");
+      right.textContent = `${e.kg} kg × ₹${e.rate}`;
+      div.appendChild(left);
+      div.appendChild(right);
+      entriesList.appendChild(div);
+    });
+  }
+
+  function setDefaultDate() {
+    const today = new Date();
+    const yyyy = today.getFullYear();
+    const mm = String(today.getMonth() + 1).padStart(2, "0");
+    const dd = String(today.getDate()).padStart(2, "0");
+    dateInput.value = `${yyyy}-${mm}-${dd}`;
+    // pre-fill if exists
+    const entries = getStoredEntries();
+    const existing = entries[dateInput.value];
+    if (existing) {
+      kgInput.value = existing.kg;
+      rateInput.value = existing.rate;
+    }
+  }
+
+  saveBtn.addEventListener("click", () => {
+    const dateVal = dateInput.value;
+    const kg = parseFloat(kgInput.value);
+    const rate = parseFloat(rateInput.value);
+    if (!dateVal || isNaN(kg) || isNaN(rate)) {
+      statusMsg.textContent = "Please enter date, kg and rate.";
+      statusMsg.style.color = "#b91c1c";
+      return;
+    }
+    const iso = isoFromInput(dateVal);
+    const entries = getStoredEntries();
+    entries[iso] = { kg, rate }; // overwrite if exists
+    setStoredEntries(entries);
+    statusMsg.textContent = `Saved: ${iso} → ${kg} kg × ₹${rate}`;
+    statusMsg.style.color = "#047857";
+    refreshList();
+  });
+
+  clearAllBtn.addEventListener("click", () => {
+    if (confirm("Clear all saved entries?")) {
+      localStorage.removeItem(STORAGE_KEY);
+      refreshList();
+      statusMsg.textContent = "All entries cleared.";
+      statusMsg.style.color = "#b91c1c";
+    }
+  });
+
+  // EXPORT: download JSON
+  exportBtn.addEventListener("click", () => {
+    const entries = getStoredEntries();
+    const keys = Object.keys(entries);
+    if (keys.length === 0) {
+      statusMsg.textContent = "No data to export.";
+      statusMsg.style.color = "#b91c1c";
+      return;
+    }
+    const blob = new Blob([JSON.stringify(entries, null, 2)], {
+      type: "application/json"
+    });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "acs-data.json";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    statusMsg.textContent = "Data exported as acs-data.json";
+    statusMsg.style.color = "#047857";
+  });
+
+  // IMPORT: select file
+  importBtn.addEventListener("click", () => {
+    importFile.click();
+  });
+
+  importFile.addEventListener("change", () => {
+    const file = importFile.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        const imported = JSON.parse(reader.result);
+        if (typeof imported !== "object" || imported === null) {
+          throw new Error("Invalid JSON structure");
+        }
+        const current = getStoredEntries();
+        let count = 0;
+        Object.keys(imported).forEach(key => {
+          const entry = imported[key];
+          if (
+            entry &&
+            typeof entry.kg !== "undefined" &&
+            typeof entry.rate !== "undefined"
+          ) {
+            current[key] = { kg: entry.kg, rate: entry.rate }; // overwrite (Option A)
+            count++;
+          }
+        });
+        setStoredEntries(current);
+        refreshList();
+        statusMsg.textContent = `Imported ${count} entries (existing dates overwritten).`;
+        statusMsg.style.color = "#047857";
+      } catch (e) {
+        console.error(e);
+        statusMsg.textContent = "Import failed: invalid JSON.";
+        statusMsg.style.color = "#b91c1c";
+      } finally {
+        importFile.value = "";
+      }
+    };
+    reader.readAsText(file);
+  });
+
+  setDefaultDate();
+  refreshList();
+</script>
+</body>
+</html>
