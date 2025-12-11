@@ -2,73 +2,98 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>ACS Calculator</title>
+  <title>ACS_Calculator</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
     * { box-sizing: border-box; }
 
     body {
-      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      background: #f4f4f4;
       margin: 0;
-      padding: 20px;
+      padding: 16px;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: radial-gradient(circle at top, #eef2ff, #e5e7eb);
       display: flex;
       justify-content: center;
     }
 
     .wrapper {
-      max-width: 900px;
       width: 100%;
+      max-width: 480px; /* great for portrait / phones */
     }
 
     h1 {
       text-align: center;
-      margin-bottom: 10px;
+      margin: 0 0 12px;
+      font-size: 22px;
     }
 
     .controls {
+      background: #ffffffaa;
+      backdrop-filter: blur(8px);
+      padding: 12px;
+      border-radius: 12px;
+      box-shadow: 0 8px 20px rgba(0,0,0,0.06);
       display: flex;
       flex-wrap: wrap;
       gap: 10px;
-      margin-bottom: 20px;
-      background: #fff;
-      padding: 15px;
-      border-radius: 10px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.06);
-    }
-
-    .controls label {
-      font-size: 14px;
-      display: block;
-      margin-bottom: 4px;
-    }
-
-    .controls input {
-      padding: 6px 8px;
-      font-size: 14px;
-      width: 100%;
+      margin-bottom: 16px;
     }
 
     .field {
       flex: 1 1 160px;
-      min-width: 150px;
+      min-width: 140px;
+    }
+
+    .field label {
+      display: block;
+      font-size: 13px;
+      margin-bottom: 4px;
+      color: #374151;
+    }
+
+    .field input {
+      width: 100%;
+      padding: 7px 8px;
+      border-radius: 8px;
+      border: 1px solid #d1d5db;
+      font-size: 14px;
+    }
+
+    .buttons {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      flex: 1 1 160px;
     }
 
     button {
-      cursor: pointer;
       border: none;
-      border-radius: 6px;
-      padding: 10px 16px;
+      border-radius: 999px;
+      padding: 10px 14px;
       font-size: 14px;
       font-weight: 600;
-      background: #111827;
-      color: #fff;
-      transition: transform 0.05s ease, box-shadow 0.05s ease;
+      cursor: pointer;
+      transition: transform 0.06s ease, box-shadow 0.06s ease, opacity 0.1s;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
     }
 
-    button:hover {
+    button.primary {
+      background: linear-gradient(135deg, #4f46e5, #7c3aed);
+      color: #fff;
+      box-shadow: 0 8px 18px rgba(88, 80, 236, 0.4);
+    }
+
+    button.secondary {
+      background: #e5e7eb;
+      color: #111827;
+    }
+
+    button:hover:not(:disabled) {
       transform: translateY(-1px);
-      box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+      box-shadow: 0 10px 22px rgba(0,0,0,0.12);
     }
 
     button:disabled {
@@ -78,50 +103,114 @@
       transform: none;
     }
 
-    /* Card that we will turn into an image */
-    .card {
-      margin-top: 20px;
-      background: #fff;
-      padding: 20px;
-      border-radius: 10px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    /* ========== CARD TO EXPORT AS IMAGE ========== */
+
+    .card-container {
+      display: flex;
+      justify-content: center;
     }
 
-    .summary-title {
-      text-align: center;
-      font-weight: 700;
-      font-size: 26px;
-      margin-bottom: 4px;
+    #summaryCard {
+      width: 100%;
+      max-width: 420px;       /* portrait-feel */
+      min-height: 640px;      /* portrait height */
+      background: #ffffff;
+      border-radius: 24px;
+      box-shadow: 0 12px 30px rgba(0,0,0,0.12);
+      overflow: hidden;
+      display: none;          /* shown after generating rows */
+      margin: 8px auto 0;
+      position: relative;
     }
 
-    .summary-range {
+    .card-header {
+      padding: 18px 18px 16px;
+      background: radial-gradient(circle at top left, #a5b4fc, #4f46e5);
+      color: white;
       text-align: center;
+    }
+
+    .card-header h2 {
+      margin: 0;
+      font-size: 24px;
+      letter-spacing: 0.08em;
+    }
+
+    .card-header .range {
+      margin-top: 4px;
+      font-size: 13px;
+      opacity: 0.95;
+    }
+
+    .card-body {
+      padding: 16px 18px 20px;
       font-size: 14px;
-      margin-bottom: 16px;
     }
 
     table {
       width: 100%;
       border-collapse: collapse;
-      font-size: 14px;
+      font-size: 13px;
     }
 
-    th, td {
-      border: 1px solid #111;
-      padding: 8px 6px;
+    thead th {
+      background: #f3f4ff;
+      color: #111827;
+      font-weight: 700;
+      padding: 8px 4px;
+      border-bottom: 1px solid #d1d5db;
+    }
+
+    tbody td, tfoot td {
+      padding: 8px 4px;
       text-align: center;
+      border-bottom: 1px solid #e5e7eb;
     }
 
-    th {
+    tbody tr:last-child td {
+      border-bottom: none;
+    }
+
+    tfoot .total-label {
+      text-align: right;
       font-weight: 700;
+      padding-right: 10px;
     }
 
-    tfoot td {
-      font-weight: 700;
+    tfoot .total-value {
+      font-weight: 800;
+      color: #111827;
     }
 
-    .footer-row td {
-      border-top: 2px solid #000;
+    .inputs-wrapper {
+      display: flex;
+      justify-content: center;
+      gap: 4px;
+    }
+
+    .inputs-wrapper input {
+      width: 70px;
+      padding: 4px;
+      border-radius: 6px;
+      border: 1px solid #d1d5db;
+      font-size: 12px;
+    }
+
+    .footer-note {
+      position: absolute;
+      bottom: 10px;
+      width: 100%;
+      text-align: center;
+      font-size: 11px;
+      color: #9ca3af;
+    }
+
+    @media (max-width: 480px) {
+      body { padding: 12px; }
+      #summaryCard {
+        max-width: 100%;
+        border-radius: 20px;
+      }
     }
   </style>
 </head>
@@ -132,49 +221,55 @@
   <div class="controls">
     <div class="field">
       <label>From date</label>
-      <input type="date" id="fromDate" />
+      <input type="date" id="fromDate">
     </div>
     <div class="field">
       <label>To date</label>
-      <input type="date" id="toDate" />
+      <input type="date" id="toDate">
     </div>
-
     <div class="field">
-      <label>Default rate (₹ per kg) – optional</label>
-      <input type="number" id="defaultRate" step="0.01" min="0" placeholder="e.g. 230" />
+      <label>Default rate (₹ / kg) (optional)</label>
+      <input type="number" id="defaultRate" step="0.01" min="0" placeholder="e.g. 230">
     </div>
-
-    <div class="field" style="display:flex;align-items:flex-end;gap:8px;">
-      <button id="generateRowsBtn">Generate rows</button>
-      <button id="downloadImgBtn" disabled>Generate image</button>
+    <div class="buttons">
+      <button class="primary" id="generateRowsBtn">Generate rows</button>
+      <button class="secondary" id="downloadImgBtn" disabled>Generate image</button>
     </div>
   </div>
 
-  <!-- Card that will be converted to PNG -->
-  <div id="summaryCard" class="card" style="display:none;">
-    <div class="summary-title">REPORT</div>
-    <div class="summary-range" id="summaryRange"></div>
-
-    <table>
-      <thead>
-        <tr>
-          <th>Total (₹)</th>
-          <th>Calculation</th>
-          <th>Date</th>
-        </tr>
-      </thead>
-      <tbody id="entriesBody"></tbody>
-      <tfoot>
-        <tr class="footer-row">
-          <td colspan="2">TOTAL:</td>
-          <td id="grandTotalCell">0</td>
-        </tr>
-      </tfoot>
-    </table>
+  <div class="card-container">
+    <!-- CARD THAT WILL BECOME THE IMAGE -->
+    <div id="summaryCard">
+      <div class="card-header">
+        <h2>REPORT Card</h2>
+        <div class="range" id="summaryRange"></div>
+      </div>
+      <div class="card-body">
+        <table>
+          <thead>
+          <tr>
+            <th>Total (₹)</th>
+            <th>Calculation</th>
+            <th>Date</th>
+          </tr>
+          </thead>
+          <tbody id="entriesBody"></tbody>
+          <tfoot>
+          <tr>
+            <td colspan="2" class="total-label">TOTAL:</td>
+            <td class="total-value" id="grandTotalCell">0</td>
+          </tr>
+          </tfoot>
+        </table>
+      </div>
+      <div class="footer-note">
+        Generated with your summary app
+      </div>
+    </div>
   </div>
 </div>
 
-<!-- html2canvas from CDN for “Generate image” -->
+<!-- html2canvas for image export -->
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 <script>
   const fromDateInput = document.getElementById("fromDate");
@@ -189,7 +284,7 @@
 
   function formatDateDisplay(d) {
     const opts = { day: "2-digit", month: "long", year: "numeric" };
-    return d.toLocaleDateString("en-GB", opts); // 02 December 2025
+    return d.toLocaleDateString("en-GB", opts);
   }
 
   function formatDateShort(d) {
@@ -216,13 +311,11 @@
       return;
     }
 
-    // clear old rows
     entriesBody.innerHTML = "";
     let d = new Date(start);
     const defaultRate = parseFloat(defaultRateInput.value);
     const useDefaultRate = !isNaN(defaultRate);
 
-    // loop through dates inclusive
     while (d <= end) {
       const tr = document.createElement("tr");
 
@@ -230,32 +323,29 @@
       totalTd.textContent = "0";
 
       const calcTd = document.createElement("td");
+      const wrap = document.createElement("div");
+      wrap.className = "inputs-wrapper";
+
       const kgInput = document.createElement("input");
       kgInput.type = "number";
-      kgInput.step = "0.01";
-      kgInput.min = "0";
       kgInput.placeholder = "kg";
+      kgInput.min = "0";
+      kgInput.step = "0.01";
 
       const rateInput = document.createElement("input");
       rateInput.type = "number";
-      rateInput.step = "0.01";
-      rateInput.min = "0";
       rateInput.placeholder = "rate";
+      rateInput.min = "0";
+      rateInput.step = "0.01";
       if (useDefaultRate) rateInput.value = defaultRate.toString();
 
-      // calculation display: "kg × rate"
-      const calcWrapper = document.createElement("div");
-      calcWrapper.style.display = "flex";
-      calcWrapper.style.justifyContent = "center";
-      calcWrapper.style.gap = "4px";
-
-      calcWrapper.appendChild(kgInput);
-      const multSpan = document.createElement("span");
-      multSpan.textContent = "×";
-      calcWrapper.appendChild(multSpan);
-      calcWrapper.appendChild(rateInput);
-
-      calcTd.appendChild(calcWrapper);
+      wrap.appendChild(kgInput);
+      const mult = document.createElement("span");
+      mult.textContent = "×";
+      mult.style.alignSelf = "center";
+      wrap.appendChild(mult);
+      wrap.appendChild(rateInput);
+      calcTd.appendChild(wrap);
 
       const dateTd = document.createElement("td");
       dateTd.textContent = formatDateShort(d);
@@ -272,20 +362,19 @@
         if (!isNaN(kg) && !isNaN(rate)) {
           rowTotal = kg * rate;
         }
-        totalTd.textContent = rowTotal === 0 ? "0" : rowTotal.toFixed(0); // no decimals, like 2300
+        totalTd.textContent = rowTotal === 0 ? "0" : rowTotal.toFixed(0);
         updateGrandTotal();
       }
 
       kgInput.addEventListener("input", recalc);
       rateInput.addEventListener("input", recalc);
 
-      // move to next day
       d.setDate(d.getDate() + 1);
     }
 
-    // set summary range text
+    // range text for header
     summaryRange.textContent =
-      "(" + formatDateDisplay(start) + " to " + formatDateDisplay(end) + ")";
+      formatDateDisplay(start) + " to " + formatDateDisplay(end);
 
     summaryCard.style.display = "block";
     downloadImgBtn.disabled = false;
@@ -302,9 +391,13 @@
   }
 
   async function downloadImage() {
-    const canvas = await html2canvas(summaryCard, { scale: 2 });
+    // higher scale = sharper PNG on phones
+    const canvas = await html2canvas(summaryCard, {
+      scale: 3,
+      backgroundColor: "#ffffff"
+    });
     const link = document.createElement("a");
-    link.download = "summary.png";
+    link.download = "summary-sheet.png";
     link.href = canvas.toDataURL("image/png");
     link.click();
   }
