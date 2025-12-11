@@ -2,16 +2,11 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>ACS Calculator - REPORT CARD</title>
+  <title>ACS Calculator - REPORT Card</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
 
   <style>
-    /* === GLOBAL === */
-    * {
-      box-sizing: border-box;
-      -webkit-tap-highlight-color: transparent;
-    }
-
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
     body {
       margin: 0;
       padding: 16px;
@@ -21,12 +16,7 @@
       display: flex;
       justify-content: center;
     }
-
-    .wrapper {
-      width: 100%;
-      max-width: 500px;
-    }
-
+    .wrapper { width: 100%; max-width: 500px; }
     h1 {
       text-align: center;
       margin: 0 0 12px;
@@ -35,7 +25,6 @@
       color: #111827;
     }
 
-    /* === CONTROLS === */
     .controls {
       background: #ffffffaa;
       backdrop-filter: blur(8px);
@@ -47,19 +36,13 @@
       gap: 10px;
       margin-bottom: 16px;
     }
-
-    .field {
-      flex: 1 1 150px;
-      min-width: 140px;
-    }
-
+    .field { flex: 1 1 150px; min-width: 140px; }
     .field label {
       display: block;
       font-size: 13px;
       margin-bottom: 4px;
       color: #374151;
     }
-
     .field input {
       width: 100%;
       padding: 7px 9px;
@@ -70,7 +53,6 @@
       background: #ffffff;
       transition: 0.15s;
     }
-
     .field input:focus {
       border-color: #6366f1;
       box-shadow: 0 0 0 2px #c7d2fe;
@@ -82,7 +64,6 @@
       flex-direction: column;
       gap: 8px;
     }
-
     button {
       border: none;
       border-radius: 999px;
@@ -96,23 +77,16 @@
       justify-content: center;
       width: 100%;
     }
-
     button.primary {
       background: linear-gradient(135deg, #4f46e5, #7c3aed);
       color: #ffffff;
       box-shadow: 0 8px 18px rgba(88, 80, 236, 0.4);
     }
-
     button.primary:hover:not(:disabled) {
       transform: translateY(-1px);
       box-shadow: 0 10px 22px rgba(88, 80, 236, 0.5);
     }
-
-    button.secondary {
-      background: #e5e7eb;
-      color: #111827;
-    }
-
+    button.secondary { background: #e5e7eb; color: #111827; }
     button:disabled {
       opacity: 0.5;
       cursor: default;
@@ -120,7 +94,6 @@
       transform: none;
     }
 
-    /* === REPORT CARD (Option A) === */
     #summaryCard {
       width: 100%;
       max-width: 420px;
@@ -131,27 +104,20 @@
       overflow: hidden;
       margin: 20px auto 0;
       display: none;
-      flex-direction: column; /* header → body → footer */
+      flex-direction: column;
     }
-
     .card-header {
       padding: 22px 12px 18px;
       background: linear-gradient(135deg, #8da4f3, #4f46e5);
       color: white;
       text-align: center;
     }
-
     .card-header h2 {
       margin: 0;
       font-size: 24px;
       font-weight: 700;
-      letter-spacing: 0.06em;
+      letter-spacing: 0.08em;
     }
-    .card-header h3{
-      font-size:12px;
-      color:#F9E4BC;
-    }
-
     .card-header .range {
       margin-top: 6px;
       font-size: 13px;
@@ -163,13 +129,7 @@
       font-size: 14px;
       flex: 1;
     }
-
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      font-size: 13px;
-    }
-
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
     thead th {
       background: #f3f4ff;
       color: #111827;
@@ -177,33 +137,24 @@
       padding: 8px 4px;
       border-bottom: 1px solid #d1d5db;
     }
-
     tbody td {
       padding: 10px 4px;
       text-align: center;
       border-bottom: 1px solid #e5e7eb;
       color: #374151;
     }
-
-    tfoot td {
-      padding: 8px 4px;
-      color: #111827;
-    }
-
+    tfoot td { padding: 8px 4px; color: #111827; }
     tfoot .total-label {
       text-align: right;
       padding-right: 10px;
       font-weight: 700;
       border-top: 2px solid #d1d5db;
     }
-
     tfoot .total-value {
       font-weight: 800;
       font-size: 14px;
       border-top: 2px solid #d1d5db;
     }
-
-    /* Hindi days row */
     tfoot .days-label {
       padding-top: 4px;
       font-size: 12px;
@@ -216,7 +167,6 @@
       justify-content: center;
       gap: 4px;
     }
-
     .inputs-wrapper input {
       width: 62px;
       padding: 4px;
@@ -235,7 +185,6 @@
       flex-direction: column;
       gap: 2px;
     }
-
     .card-footer .footer-line:last-child {
       font-weight: 600;
       color: #4f46e5;
@@ -255,12 +204,8 @@
     }
 
     @media (max-width: 480px) {
-      body {
-        padding: 10px;
-      }
-      #summaryCard {
-        max-width: 100%;
-      }
+      body { padding: 10px; }
+      #summaryCard { max-width: 100%; }
     }
   </style>
 </head>
@@ -268,7 +213,6 @@
 <div class="wrapper">
   <h1>ACS Calculator</h1>
 
-  <!-- === Controls === -->
   <div class="controls">
     <div class="field">
       <label>From date</label>
@@ -288,17 +232,16 @@
       <button class="secondary" onclick="window.location.href='daily-entry.html'">
         Daily entry system
       </button>
+      <button class="secondary" onclick="window.location.href='bills.html'">
+        Bills / Payments
+      </button>
     </div>
   </div>
 
-  <!-- === REPORT Card === -->
   <div id="summaryCard">
     <div class="card-header">
-      <h2 style="color:#D4AF37">ASHRAFI CHICKEN SHOP</h2>
-      <h3>REPORT CARD</h3>
+      <h2>REPORT Card</h2>
       <div class="range" id="summaryRange"></div>
-      <h3 style="float:left">Owner: IQBALHUSHEN GATA</h3>
-      <h3 style="float:right">Mobile: 9737248571</h3>
     </div>
 
     <div class="card-body">
@@ -330,7 +273,6 @@
   </div>
 </div>
 
-<!-- html2canvas for PNG export -->
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 <script>
   const fromDateInput = document.getElementById("fromDate");
@@ -344,16 +286,34 @@
   const summaryRange = document.getElementById("summaryRange");
   const daysLabel = document.getElementById("daysLabel");
 
-  const STORAGE_KEY = "acsEntries";
+  const ENTRIES_KEY = "acsEntries";
+  const BILLS_KEY = "acsBills";
+
+  let lastRangeStart = null;
+  let lastRangeEnd = null;
 
   function getStoredEntries() {
     try {
-      const raw = localStorage.getItem(STORAGE_KEY);
+      const raw = localStorage.getItem(ENTRIES_KEY);
       return raw ? JSON.parse(raw) : {};
     } catch (e) {
       console.error("Failed to parse entries", e);
       return {};
     }
+  }
+
+  function getBills() {
+    try {
+      const raw = localStorage.getItem(BILLS_KEY);
+      return raw ? JSON.parse(raw) : [];
+    } catch (e) {
+      console.error("Failed to parse bills", e);
+      return [];
+    }
+  }
+
+  function setBills(bills) {
+    localStorage.setItem(BILLS_KEY, JSON.stringify(bills));
   }
 
   function formatDateDisplay(d) {
@@ -370,7 +330,7 @@
 
   function setDaysLabel(start, end) {
     const msPerDay = 24 * 60 * 60 * 1000;
-    const diff = Math.round((end - start) / msPerDay) + 1; // inclusive
+    const diff = Math.round((end - start) / msPerDay) + 1;
     if (diff > 0) {
       daysLabel.textContent = `कुल ${diff} दिन का हिसाब`;
     } else {
@@ -394,6 +354,9 @@
       alert("From date cannot be after To date.");
       return;
     }
+
+    lastRangeStart = new Date(start);
+    lastRangeEnd = new Date(end);
 
     const storedEntries = getStoredEntries();
 
@@ -424,14 +387,12 @@
       rateInput.min = "0";
       rateInput.step = "0.01";
 
-      // Prepare key for this date: YYYY-MM-DD
       const yyyy = d.getFullYear();
       const mm = String(d.getMonth() + 1).padStart(2, "0");
       const dd = String(d.getDate()).padStart(2, "0");
       const isoKey = `${yyyy}-${mm}-${dd}`;
       const saved = storedEntries[isoKey];
 
-      // Pre-fill from stored entries if present
       if (saved) {
         kgInput.value = saved.kg;
         rateInput.value = saved.rate;
@@ -487,14 +448,13 @@
   function updateGrandTotal() {
     let sum = 0;
     entriesBody.querySelectorAll("tr").forEach(tr => {
-      const val = parseFloat(tr.firstChild.textContent);
+      const val = parseFloat(tr.firstChild.textContent.replace(/,/g, ""));
       if (!isNaN(val)) sum += val;
     });
     grandTotalCell.textContent =
       sum === 0 ? "0" : sum.toLocaleString("en-IN");
   }
 
-  // Build hidden, text-only card for PNG
   function buildExportCard() {
     const clone = summaryCard.cloneNode(true);
     clone.id = "summaryCardExport";
@@ -525,6 +485,39 @@
     return clone;
   }
 
+  function createBillForCurrentRange() {
+    if (!lastRangeStart || !lastRangeEnd) return;
+    if (!entriesBody.querySelector("tr")) return;
+
+    let total = 0;
+    entriesBody.querySelectorAll("tr").forEach(tr => {
+      const val = parseFloat(tr.children[0].textContent.replace(/,/g, ""));
+      if (!isNaN(val)) total += val;
+    });
+
+    if (total <= 0) return;
+
+    const fromVal = fromDateInput.value;
+    const toVal = toDateInput.value;
+    if (!fromVal || !toVal) return;
+
+    const bills = getBills();
+
+    const id = "BILL-" + Date.now();
+    const bill = {
+      id,
+      from: fromVal,
+      to: toVal,
+      total,
+      paid: 0,
+      status: "pending",
+      createdAt: new Date().toISOString()
+    };
+
+    bills.push(bill);
+    setBills(bills);
+  }
+
   async function downloadImage() {
     if (summaryCard.style.display === "none") return;
 
@@ -541,6 +534,9 @@
     link.click();
 
     document.body.removeChild(exportCard);
+
+    // After generating image, create a bill for this range
+    createBillForCurrentRange();
   }
 
   generateRowsBtn.addEventListener("click", createRows);
