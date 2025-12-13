@@ -4,167 +4,13 @@
   <meta charset="UTF-8" />
   <title>ACS Calculator - Daily Entry</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <style>
-    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-    body {
-      margin: 0;
-      padding: 16px;
-      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
-        sans-serif;
-      background: radial-gradient(circle at top, #eef2ff, #e5e7eb);
-      display: flex;
-      justify-content: center;
-    }
-    .wrapper { width: 100%; max-width: 480px; }
-    h1 {
-      text-align: center;
-      margin: 0 0 12px;
-      font-size: 22px;
-      font-weight: 700;
-      color: #111827;
-    }
-    .top-actions {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-      margin-bottom: 12px;
-    }
-    button {
-      border: none;
-      border-radius: 999px;
-      padding: 8px 12px;
-      font-size: 13px;
-      font-weight: 600;
-      cursor: pointer;
-      transition: .15s;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      white-space: nowrap;
-    }
-    button.primary {
-      background: linear-gradient(135deg, #4f46e5, #7c3aed);
-      color: white;
-      box-shadow: 0 6px 14px rgba(88,80,236,0.35);
-    }
-    button.secondary {
-      background: #e5e7eb;
-      color: #111827;
-    }
-    button.danger {
-      background: #fee2e2;
-      color: #b91c1c;
-    }
-    .card {
-      background: #ffffffaa;
-      backdrop-filter: blur(8px);
-      padding: 16px;
-      border-radius: 16px;
-      box-shadow: 0 8px 20px rgba(0,0,0,0.08);
-      margin-bottom: 16px;
-    }
-    label {
-      display: block;
-      font-size: 13px;
-      margin-bottom: 4px;
-      color: #374151;
-    }
-    input {
-      width: 100%;
-      padding: 8px 10px;
-      border-radius: 8px;
-      border: 1px solid #d1d5db;
-      font-size: 14px;
-      margin-bottom: 10px;
-      outline: none;
-      transition: .15s;
-    }
-    input:focus {
-      border-color: #6366f1;
-      box-shadow: 0 0 0 2px #c7d2fe;
-    }
-    .note {
-      font-size: 12px;
-      color: #6b7280;
-      margin-top: 4px;
-    }
-    .status-text {
-      font-size: 12px;
-      margin-top: 6px;
-    }
-    .list-card {
-      background: #ffffff;
-      padding: 12px 14px;
-      border-radius: 14px;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.05);
-    }
-    .list-card h2 {
-      margin: 0 0 8px;
-      font-size: 15px;
-    }
 
-    .entry-item {
-      font-size: 13px;
-      padding: 6px 8px;
-      border-bottom: 1px solid #e5e7eb;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      gap: 6px;
-      border-radius: 8px;
-      margin-bottom: 4px;
-      background: #f9fafb;
-      border: 1px solid transparent;
-    }
-    .entry-item:last-child { border-bottom: none; }
-
-    /* color per status by bill-range */
-    .entry-pending {
-      background: #f9fafb;
-      border-color: #e5e7eb;
-    }
-    .entry-loading {
-      background: #fefce8;   /* yellow tint */
-      border-color: #facc15;
-    }
-    .entry-success {
-      background: #ecfdf5;   /* green tint */
-      border-color: #16a34a;
-    }
-
-    .entry-left {
-      display: flex;
-      flex-direction: column;
-      gap: 2px;
-    }
-    .entry-date {
-      font-weight: 600;
-      color: #111827;
-    }
-    .entry-status-pill {
-      font-size: 11px;
-      padding: 1px 7px;
-      border-radius: 999px;
-      display: inline-block;
-    }
-    .pill-pending {
-      background: #e5e7eb;
-      color: #374151;
-    }
-    .pill-loading {
-      background: #fef3c7;
-      color: #92400e;
-    }
-    .pill-success {
-      background: #dcfce7;
-      color: #166534;
-    }
-
-    .muted { color: #6b7280; }
-    #importFile { display: none; }
-  </style>
+  <!-- Shared + Page CSS -->
+  <link rel="stylesheet" href="base.css">
+  <link rel="stylesheet" href="daily-entry.css">
 </head>
 <body>
+
 <div class="wrapper">
   <h1>Daily Entry</h1>
 
@@ -199,8 +45,9 @@
 
     <button class="primary" id="saveBtn">Save entry</button>
     <div class="status-text" id="statusMsg"></div>
+
     <div class="note">
-      Entries are stored only in this browser (local).  
+      Entries are stored only in this browser (local).
       Use Export / Import if you switch device.
     </div>
   </div>
@@ -224,6 +71,7 @@
       return {};
     }
   }
+
   function setStoredEntries(obj) {
     localStorage.setItem(ENTRIES_KEY, JSON.stringify(obj));
   }
@@ -266,18 +114,16 @@
     return bestStatus; // null if not in any bill
   }
 
-  function isoFromInput(val) { return val; }
-
-  const dateInput  = document.getElementById("date");
-  const kgInput    = document.getElementById("kg");
-  const rateInput  = document.getElementById("rate");
-  const saveBtn    = document.getElementById("saveBtn");
-  const statusMsg  = document.getElementById("statusMsg");
-  const entriesList= document.getElementById("entriesList");
-  const clearAllBtn= document.getElementById("clearAllBtn");
-  const exportBtn  = document.getElementById("exportBtn");
-  const importBtn  = document.getElementById("importBtn");
-  const importFile = document.getElementById("importFile");
+  const dateInput   = document.getElementById("date");
+  const kgInput     = document.getElementById("kg");
+  const rateInput   = document.getElementById("rate");
+  const saveBtn     = document.getElementById("saveBtn");
+  const statusMsg   = document.getElementById("statusMsg");
+  const entriesList = document.getElementById("entriesList");
+  const clearAllBtn = document.getElementById("clearAllBtn");
+  const exportBtn   = document.getElementById("exportBtn");
+  const importBtn   = document.getElementById("importBtn");
+  const importFile  = document.getElementById("importFile");
 
   function refreshList() {
     const entries = getStoredEntries();
@@ -326,8 +172,49 @@
         left.appendChild(pill);
       }
 
-      const right = document.createElement("span");
-      right.textContent = `${e.kg} kg × ₹${e.rate} = ₹${total.toFixed(0)}`;
+      const right = document.createElement("div");
+      right.style.display = "flex";
+      right.style.alignItems = "center";
+      right.style.gap = "10px";
+
+      const amountText = document.createElement("span");
+      amountText.textContent = `${e.kg} kg × ₹${e.rate} = ₹${total.toFixed(0)}`;
+
+      // Actions (Edit / Delete)
+      const actions = document.createElement("div");
+      actions.className = "entry-actions";
+
+      const editBtn = document.createElement("button");
+      editBtn.className = "small-btn edit";
+      editBtn.textContent = "Edit";
+      editBtn.addEventListener("click", () => {
+        dateInput.value = dateIso;
+        kgInput.value = e.kg;
+        rateInput.value = e.rate;
+        statusMsg.textContent = `Editing: ${dateIso} (update kg/rate and click Save entry)`;
+        statusMsg.style.color = "#0369a1";
+        window.scrollTo({ top: 0, behavior: "smooth" });
+        kgInput.focus();
+      });
+
+      const delBtn = document.createElement("button");
+      delBtn.className = "small-btn delete";
+      delBtn.textContent = "Delete";
+      delBtn.addEventListener("click", () => {
+        if (!confirm(`Delete entry for ${dateIso}?`)) return;
+        const all = getStoredEntries();
+        delete all[dateIso];
+        setStoredEntries(all);
+        refreshList();
+        statusMsg.textContent = `Deleted: ${dateIso}`;
+        statusMsg.style.color = "#b91c1c";
+      });
+
+      actions.appendChild(editBtn);
+      actions.appendChild(delBtn);
+
+      right.appendChild(amountText);
+      right.appendChild(actions);
 
       item.appendChild(left);
       item.appendChild(right);
@@ -341,6 +228,7 @@
     const mm = String(today.getMonth() + 1).padStart(2, "0");
     const dd = String(today.getDate()).padStart(2, "0");
     dateInput.value = `${yyyy}-${mm}-${dd}`;
+
     const entries = getStoredEntries();
     const existing = entries[dateInput.value];
     if (existing) {
@@ -353,16 +241,18 @@
     const dateVal = dateInput.value;
     const kg   = parseFloat(kgInput.value);
     const rate = parseFloat(rateInput.value);
+
     if (!dateVal || isNaN(kg) || isNaN(rate)) {
       statusMsg.textContent = "Please enter date, kg and rate.";
       statusMsg.style.color = "#b91c1c";
       return;
     }
-    const iso = isoFromInput(dateVal);
+
     const entries = getStoredEntries();
-    entries[iso] = { kg, rate };
+    entries[dateVal] = { kg, rate };
     setStoredEntries(entries);
-    statusMsg.textContent = `Saved: ${iso} → ${kg} kg × ₹${rate}`;
+
+    statusMsg.textContent = `Saved: ${dateVal} → ${kg} kg × ₹${rate}`;
     statusMsg.style.color = "#047857";
     refreshList();
   });
@@ -384,9 +274,7 @@
       statusMsg.style.color = "#b91c1c";
       return;
     }
-    const blob = new Blob([JSON.stringify(entries, null, 2)], {
-      type: "application/json"
-    });
+    const blob = new Blob([JSON.stringify(entries, null, 2)], { type: "application/json" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
@@ -399,13 +287,12 @@
     statusMsg.style.color = "#047857";
   });
 
-  importBtn.addEventListener("click", () => {
-    importFile.click();
-  });
+  importBtn.addEventListener("click", () => importFile.click());
 
   importFile.addEventListener("change", () => {
     const file = importFile.files[0];
     if (!file) return;
+
     const reader = new FileReader();
     reader.onload = () => {
       try {
@@ -413,19 +300,18 @@
         if (typeof imported !== "object" || imported === null) {
           throw new Error("Invalid JSON structure");
         }
+
         const current = getStoredEntries();
         let count = 0;
+
         Object.keys(imported).forEach(key => {
           const entry = imported[key];
-          if (
-            entry &&
-            typeof entry.kg !== "undefined" &&
-            typeof entry.rate !== "undefined"
-          ) {
+          if (entry && typeof entry.kg !== "undefined" && typeof entry.rate !== "undefined") {
             current[key] = { kg: entry.kg, rate: entry.rate };
             count++;
           }
         });
+
         setStoredEntries(current);
         refreshList();
         statusMsg.textContent = `Imported ${count} entries (existing dates overwritten).`;
@@ -438,11 +324,13 @@
         importFile.value = "";
       }
     };
+
     reader.readAsText(file);
   });
 
   setDefaultDate();
   refreshList();
 </script>
+
 </body>
 </html>
