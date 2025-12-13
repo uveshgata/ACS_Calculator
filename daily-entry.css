@@ -1,0 +1,135 @@
+/* ===============================
+   DAILY-ENTRY.CSS
+   Used ONLY by daily-entry.html
+   =============================== */
+
+/* Top action buttons already handled by base.css */
+
+/* Status text under save button */
+.status-text {
+  font-size: 12px;
+  margin-top: 6px;
+}
+
+/* Saved entries card tweaks */
+.list-card h2 {
+  font-size: 15px;
+}
+
+/* ===============================
+   Entry List Items
+   =============================== */
+
+.entry-item {
+  font-size: 13px;
+  padding: 6px 8px;
+  border-bottom: 1px solid #e5e7eb;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 6px;
+  border-radius: 8px;
+  margin-bottom: 4px;
+  background: #f9fafb;
+  border: 1px solid transparent;
+}
+
+.entry-item:last-child {
+  border-bottom: none;
+}
+
+/* Status background colors */
+.entry-pending {
+  background: #f9fafb;
+  border-color: #e5e7eb;
+}
+
+.entry-loading {
+  background: #fefce8; /* yellow */
+  border-color: #facc15;
+}
+
+.entry-success {
+  background: #ecfdf5; /* green */
+  border-color: #16a34a;
+}
+
+/* ===============================
+   Entry Left Side
+   =============================== */
+
+.entry-left {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.entry-date {
+  font-weight: 600;
+  color: #111827;
+}
+
+/* Status pill */
+.entry-status-pill {
+  font-size: 11px;
+  padding: 1px 7px;
+  border-radius: 999px;
+  display: inline-block;
+}
+
+.pill-pending {
+  background: #e5e7eb;
+  color: #374151;
+}
+
+.pill-loading {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.pill-success {
+  background: #dcfce7;
+  color: #166534;
+}
+
+/* ===============================
+   Entry Actions (Edit / Delete)
+   =============================== */
+
+.entry-actions {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.small-btn {
+  font-size: 11px;
+  padding: 4px 8px;
+  border-radius: 999px;
+  border: none;
+  cursor: pointer;
+  font-weight: 600;
+  transition: 0.15s;
+}
+
+.small-btn.edit {
+  background: #e0f2fe;
+  color: #0369a1;
+}
+
+.small-btn.delete {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+
+.small-btn:hover {
+  opacity: 0.9;
+}
+
+/* ===============================
+   Import input (hidden)
+   =============================== */
+
+#importFile {
+  display: none;
+}
