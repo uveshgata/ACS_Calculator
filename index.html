@@ -7,10 +7,105 @@
 
   <link rel="stylesheet" href="base.css">
   <link rel="stylesheet" href="index.css">
+
+  <style>
+    /* Small, clean customer banner (page-level) */
+    .active-customer-banner{
+      background:#ffffff;
+      border:1px solid #e5e7eb;
+      border-radius:14px;
+      padding:10px 12px;
+      box-shadow: 0 6px 16px rgba(0,0,0,0.06);
+      margin-bottom:12px;
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      gap:10px;
+    }
+    .ac-left{
+      display:flex;
+      flex-direction:column;
+      gap:2px;
+      min-width:0;
+    }
+    .ac-title{
+      font-size:12px;
+      color:#6b7280;
+      font-weight:700;
+      letter-spacing:.02em;
+      text-transform:uppercase;
+    }
+    .ac-name{
+      font-size:15px;
+      font-weight:800;
+      color:#111827;
+      line-height:1.2;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+      max-width: 320px;
+    }
+    .ac-sub{
+      font-size:12px;
+      color:#6b7280;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+      max-width: 320px;
+    }
+    .ac-btn{
+      padding:8px 12px;
+      border-radius:999px;
+      border:none;
+      background:#e5e7eb;
+      color:#111827;
+      font-weight:700;
+      cursor:pointer;
+      white-space:nowrap;
+    }
+    .ac-btn:hover{ filter:brightness(.98); }
+
+    /* Report-card customer block (inside header; exports to image) */
+    .customer-block{
+      margin-top:10px;
+      padding:10px 12px;
+      border-radius:14px;
+      background: rgba(255,255,255,0.14);
+      border: 1px solid rgba(255,255,255,0.25);
+      backdrop-filter: blur(6px);
+      text-align:left;
+    }
+    .customer-block .line1{
+      font-size:13px;
+      font-weight:800;
+      color:#ffffff;
+      letter-spacing:.01em;
+    }
+    .customer-block .line2{
+      margin-top:4px;
+      font-size:12px;
+      color: rgba(255,255,255,0.9);
+      font-weight:600;
+    }
+    .customer-block .muted{
+      color: rgba(255,255,255,0.75);
+      font-weight:600;
+    }
+  </style>
 </head>
 <body>
 <div class="wrapper">
   <h1>ACS Calculator</h1>
+
+  <!-- ✅ Clear customer display on page -->
+  <div class="active-customer-banner">
+    <div class="ac-left">
+      <div class="ac-title">Active Customer</div>
+      <div id="acName" class="ac-name">—</div>
+      <div id="acSub" class="ac-sub">—</div>
+    </div>
+    <button class="ac-btn" onclick="window.location.href='customers.html'">Change</button>
+  </div>
 
   <div class="controls">
     <div class="field">
@@ -31,7 +126,6 @@
       <button class="secondary" id="downloadImgBtn" disabled>Generate image</button>
       <button class="secondary" onclick="window.location.href='daily-entry.html'">Daily entry system</button>
       <button class="secondary" onclick="window.location.href='bills.html'">Bills / Payments</button>
-      <button class="secondary" onclick="window.location.href='customers.html'">Change customer</button>
     </div>
   </div>
 
@@ -39,7 +133,17 @@
     <div class="card-header">
       <h2 style="color:#D4AF37">ASHRAFI CHICKEN SHOP</h2>
       <h3>REPORT CARD</h3>
+
+      <!-- ✅ Premium customer block (included in exported image) -->
+      <div class="customer-block">
+        <div class="line1" id="customerLine1">Customer: —</div>
+        <div class="line2">
+          <span class="muted">Customer ID:</span> <span id="customerLine2">—</span>
+        </div>
+      </div>
+
       <div class="range" id="summaryRange"></div>
+
       <h3 style="float:left">Owner: IQBALHUSHEN GATA</h3>
       <h3 style="float:right">Mobile: 9737248571</h3>
     </div>
@@ -79,25 +183,55 @@
   const ACTIVE_KEY    = "acsActiveCustomerId";
 
   function getActiveCustomerId() { return localStorage.getItem(ACTIVE_KEY); }
+  function getCustomers() {
+    try { return JSON.parse(localStorage.getItem(CUSTOMERS_KEY)) || []; }
+    catch { return []; }
+  }
+  function getActiveCustomer() {
+    const id = getActiveCustomerId();
+    return getCustomers().find(c => c.customerId === id) || null;
+  }
+
   const customerId = getActiveCustomerId();
   if (!customerId) window.location.href = "customers.html";
 
   const ENTRIES_KEY = `acsEntries:${customerId}`;
   const BILLS_KEY   = `acsBills:${customerId}`;
 
+  // Page-level clear display
+  const acName = document.getElementById("acName");
+  const acSub  = document.getElementById("acSub");
+
+  // Card-level (export) premium block
+  const customerLine1 = document.getElementById("customerLine1");
+  const customerLine2 = document.getElementById("customerLine2");
+
+  const activeCustomer = getActiveCustomer();
+  if (activeCustomer) {
+    const phone = activeCustomer.phone ? ` • ${activeCustomer.phone}` : "";
+    acName.textContent = activeCustomer.displayName || "Unnamed customer";
+    acSub.textContent  = `ID: ${activeCustomer.customerId}${phone}`;
+
+    customerLine1.textContent = `Customer: ${activeCustomer.displayName || "Unnamed"}${activeCustomer.phone ? " (" + activeCustomer.phone + ")" : ""}`;
+    customerLine2.textContent = activeCustomer.customerId;
+  } else {
+    acName.textContent = "Unknown customer";
+    acSub.textContent  = `ID: ${customerId}`;
+    customerLine1.textContent = "Customer: Unknown";
+    customerLine2.textContent = customerId;
+  }
+
   const fromDateInput = document.getElementById("fromDate");
   const toDateInput = document.getElementById("toDate");
   const defaultRateInput = document.getElementById("defaultRate");
   const generateRowsBtn = document.getElementById("generateRowsBtn");
   const downloadImgBtn = document.getElementById("downloadImgBtn");
+
   const summaryCard = document.getElementById("summaryCard");
   const entriesBody = document.getElementById("entriesBody");
   const grandTotalCell = document.getElementById("grandTotalCell");
   const summaryRange = document.getElementById("summaryRange");
   const daysLabel = document.getElementById("daysLabel");
-
-  let lastRangeStart = null;
-  let lastRangeEnd = null;
 
   function todayIso() {
     const t = new Date();
@@ -132,7 +266,6 @@
     return "success";
   }
 
-  // Lock only if payment started (loading/success)
   function isLockedDate(dateIso) {
     const bills = getBills();
     return bills.some(b => {
@@ -166,6 +299,7 @@
   function createRows() {
     const fromVal = fromDateInput.value;
     const toVal = toDateInput.value;
+
     if (!fromVal || !toVal) return alert("Please select both from and to dates.");
     if (fromVal > toVal) return alert("From date cannot be after To date.");
 
@@ -174,9 +308,6 @@
 
     const start = new Date(fromVal);
     const end = new Date(toVal);
-
-    lastRangeStart = new Date(start);
-    lastRangeEnd = new Date(end);
 
     const storedEntries = getStoredEntries();
     entriesBody.innerHTML = "";
@@ -219,7 +350,6 @@
         rateInput.value = defaultRate.toString();
       }
 
-      // 🔒 lock only if payment started
       if (isLockedDate(isoKey)) {
         kgInput.disabled = true;
         rateInput.disabled = true;
@@ -280,11 +410,7 @@
     entriesBody.querySelectorAll("tr").forEach(tr => {
       const isoKey = ddmmyyyyToIso(tr.children[2].textContent.trim());
       if (!isoKey) return;
-
-      // never save future
       if (isoKey > t) return;
-
-      // never save if locked (payment started)
       if (isLockedDate(isoKey)) return;
 
       const kgInput = tr.querySelector("input[placeholder='kg']");
@@ -323,7 +449,6 @@
     const entries = getStoredEntries();
     const total = recomputeBillTotal(fromVal, toVal, entries);
 
-    // find exact range bill
     const idx = bills.findIndex(b => b.from === fromVal && b.to === toVal);
 
     if (idx === -1) {
@@ -341,7 +466,6 @@
       return;
     }
 
-    // Bill exists: only update if payment not initialized (pending)
     const bill = bills[idx];
     const stage = statusFromAmounts(bill);
     if (stage !== "pending") return;
@@ -356,9 +480,11 @@
     const clone = summaryCard.cloneNode(true);
     clone.id = "summaryCardExport";
     clone.classList.add("export-card");
+    document.body.appendChild(clone);
 
-    const cloneBody = clone.querySelector("tbody");
-    const cloneRows = cloneBody.querySelectorAll("tr");
+    // Replace inputs with text
+    const cloneTbody = clone.querySelector("tbody");
+    const cloneRows = cloneTbody.querySelectorAll("tr");
     const originalRows = entriesBody.querySelectorAll("tr");
 
     cloneRows.forEach((row, idx) => {
@@ -378,7 +504,6 @@
       row.children[2].textContent = dateText;
     });
 
-    document.body.appendChild(clone);
     return clone;
   }
 
