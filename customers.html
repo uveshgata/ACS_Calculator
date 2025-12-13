@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>ACS Calculator - Customers</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <link rel="stylesheet" href="base.css">
+  <style>
+    .card {
+      background: #ffffff;
+      border-radius: 16px;
+      padding: 14px;
+      box-shadow: 0 8px 20px rgba(0,0,0,0.08);
+      margin-bottom: 12px;
+    }
+    .row { display: flex; gap: 10px; flex-wrap: wrap; }
+    .row > * { flex: 1 1 160px; }
+    .list { display: flex; flex-direction: column; gap: 8px; margin-top: 10px; }
+    .cust {
+      background: #f9fafb;
+      border: 1px solid #e5e7eb;
+      border-radius: 12px;
+      padding: 10px 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+      cursor: pointer;
+    }
+    .cust:hover { border-color: #c7d2fe; }
+    .cust.selected {
+      border-color: #4f46e5;
+      background: #eef2ff;
+    }
+    .cust-name { font-weight: 700; color: #111827; }
+    .cust-sub { font-size: 12px; color: #6b7280; margin-top: 2px; }
+    .pill {
+      font-size: 11px;
+      padding: 3px 9px;
+      border-radius: 999px;
+      background: #e5e7eb;
+      color: #111827;
+      white-space: nowrap;
+    }
+    .actions { display: flex; gap: 8px; }
+    .modal-backdrop {
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,0.45);
+      display: none;
+      align-items: center; justify-content: center;
+      padding: 16px;
+      z-index: 999;
+    }
+    .modal {
+      width: 100%;
+      max-width: 520px;
+      background: #fff;
+      border-radius: 16px;
+      padding: 14px;
+      box-shadow: 0 14px 40px rgba(0,0,0,0.2);
+    }
+    .modal h2 { margin: 0 0 8px; font-size: 16px; }
+    .hint { font-size: 12px; color: #6b7280; margin-top: 6px; }
+    .warn { font-size: 12px; color: #b45309; margin-top: 6px; }
+    .ok { font-size: 12px; color: #047857; margin-top: 6px; }
+  </style>
+</head>
+<body>
+<div class="wrapper">
+  <h1>Customer Selection</h1>
+
+  <div class="card">
+    <label>Search customer</label>
+    <input id="search" placeholder="Type name or phone…" />
+
+    <div class="row" style="margin-top:10px;">
+      <button class="secondary" id="addBtn">+ Add New Customer</button>
+      <button class="primary" id="continueBtn" disabled>Continue</button>
+    </div>
+
+    <div class="hint">
+      You must select a customer before using Report / Daily Entry / Bills.
+    </div>
+
+    <div id="list" class="list"></div>
+  </div>
+
+  <div class="card">
+    <div style="font-size:12px;color:#6b7280;">
+      Tip: Add phone number to avoid duplicates like “Rahul Sharma” vs “Rahul K Sharma”.
+    </div>
+  </div>
+</div>
+
+<!-- Modal -->
+<div class="modal-backdrop" id="modalBackdrop">
+  <div class="modal">
+    <h2>Add Customer</h2>
+
+    <label>Customer Name *</label>
+    <input id="newName" placeholder="e.g. Rahul Sharma" />
+
+    <label>Mobile (recommended)</label>
+    <input id="newPhone" placeholder="e.g. 9876543210" inputmode="numeric" />
+
+    <div class="row" style="margin-top:10px;">
+      <button class="secondary" id="cancelAdd">Cancel</button>
+      <button class="primary" id="saveAdd">Save</button>
+    </div>
+
+    <div id="addMsg" class="hint"></div>
+  </div>
+</div>
+
+<script>
+  const CUSTOMERS_KEY = "acsCustomers";
+  const ACTIVE_KEY = "acsActiveCustomerId";
+
+  const searchInput = document.getElementById("search");
+  const listEl = document.getElementById("list");
+  const addBtn = document.getElementById("addBtn");
+  const continueBtn = document.getElementById("continueBtn");
+
+  const modalBackdrop = document.getElementById("modalBackdrop");
+  const newName = document.getElementById("newName");
+  const newPhone = document.getElementById("newPhone");
+  const cancelAdd = document.getElementById("cancelAdd");
+  const saveAdd = document.getElementById("saveAdd");
+  const addMsg = document.getElementById("addMsg");
+
+  let selectedId = null;
+
+  function getCustomers() {
+    try { return JSON.parse(localStorage.getItem(CUSTOMERS_KEY)) || []; }
+    catch { return []; }
+  }
+  function setCustomers(arr) {
+    localStorage.setItem(CUSTOMERS_KEY, JSON.stringify(arr));
+  }
+
+  function makeId() {
+    return "CUST-" + Date.now().toString(36) + "-" + Math.random().toString(36).slice(2,8).toUpperCase();
+  }
+
+  function normalizeNameKey(name) {
+    // lower + remove punctuation + collapse spaces
+    let s = (name || "").toLowerCase().trim();
+    s = s.replace(/[.,"'`~!@#$%^&*()_\-+=\[\]{};:\\|<>/?]/g, " ");
+    s = s.replace(/\s+/g, " ").trim();
+
+    // optional: remove single-letter middle initials (k, r, etc.)
+    const parts = s.split(" ").filter(Boolean);
+    const filtered = parts.filter((p, idx) => !(p.length === 1 && idx > 0 && idx < parts.length - 1));
+    return filtered.join(" ");
+  }
+
+  function normalizePhone(phone) {
+    return (phone || "").replace(/\D/g, "").trim();
+  }
+
+  function renderList() {
+    const q = (searchInput.value || "").toLowerCase().trim();
+    const customers = getCustomers();
+
+    const filtered = customers.filter(c => {
+      const hay = `${c.displayName || ""} ${(c.phone || "")}`.toLowerCase();
+      return hay.includes(q);
+    });
+
+    listEl.innerHTML = "";
+
+    if (filtered.length === 0) {
+      const empty = document.createElement("div");
+      empty.className = "hint";
+      empty.textContent = customers.length ? "No match found." : "No customers yet. Add your first customer.";
+      listEl.appendChild(empty);
+      continueBtn.disabled = true;
+      return;
+    }
+
+    filtered.forEach(c => {
+      const item = document.createElement("div");
+      item.className = "cust" + (c.customerId === selectedId ? " selected" : "");
+
+      const left = document.createElement("div");
+      const name = document.createElement("div");
+      name.className = "cust-name";
+      name.textContent = c.displayName || "Unnamed";
+
+      const sub = document.createElement("div");
+      sub.className = "cust-sub";
+      sub.textContent = `ID: ${c.customerId}` + (c.phone ? ` • ${c.phone}` : "");
+
+      left.appendChild(name);
+      left.appendChild(sub);
+
+      const right = document.createElement("span");
+      right.className = "pill";
+      right.textContent = (c.customerId === selectedId) ? "Selected" : "Tap to select";
+
+      item.appendChild(left);
+      item.appendChild(right);
+
+      item.addEventListener("click", () => {
+        selectedId = c.customerId;
+        continueBtn.disabled = false;
+        renderList();
+      });
+
+      listEl.appendChild(item);
+    });
+  }
+
+  function openModal() {
+    addMsg.textContent = "";
+    addMsg.className = "hint";
+    newName.value = "";
+    newPhone.value = "";
+    modalBackdrop.style.display = "flex";
+    newName.focus();
+  }
+
+  function closeModal() {
+    modalBackdrop.style.display = "none";
+  }
+
+  function saveCustomer() {
+    const name = (newName.value || "").trim();
+    const phone = normalizePhone(newPhone.value);
+
+    if (!name) {
+      addMsg.textContent = "Name is required.";
+      addMsg.className = "warn";
+      return;
+    }
+
+    const nameKey = normalizeNameKey(name);
+    const customers = getCustomers();
+
+    // Duplicate checks
+    const sameName = customers.filter(c => c.nameKey === nameKey);
+    const samePhone = phone ? customers.find(c => normalizePhone(c.phone) === phone) : null;
+
+    if (samePhone) {
+      // phone already exists
+      addMsg.textContent = `This phone already exists for: ${samePhone.displayName}. Select existing customer.`;
+      addMsg.className = "warn";
+      selectedId = samePhone.customerId;
+      localStorage.setItem(ACTIVE_KEY, selectedId);
+      closeModal();
+      renderList();
+      continueBtn.disabled = false;
+      return;
+    }
+
+    if (sameName.length > 0) {
+      // similar name exists
+      const msg = `Similar name exists: ${sameName[0].displayName}${sameName[0].phone ? " ("+sameName[0].phone+")" : ""}.
+Create new customer anyway?`;
+      const ok = confirm(msg);
+      if (!ok) {
+        addMsg.textContent = "Cancelled. Please select the existing customer from the list.";
+        addMsg.className = "warn";
+        return;
+      }
+    }
+
+    const customerId = makeId();
+    const obj = {
+      customerId,
+      displayName: name,
+      nameKey,
+      phone: phone || "",
+      createdAt: new Date().toISOString()
+    };
+
+    customers.push(obj);
+    setCustomers(customers);
+
+    selectedId = customerId;
+    localStorage.setItem(ACTIVE_KEY, customerId);
+
+    addMsg.textContent = "Customer added and selected.";
+    addMsg.className = "ok";
+    closeModal();
+    renderList();
+    continueBtn.disabled = false;
+  }
+
+  continueBtn.addEventListener("click", () => {
+    if (!selectedId) return;
+    localStorage.setItem(ACTIVE_KEY, selectedId);
+    window.location.href = "index.html";
+  });
+
+  addBtn.addEventListener("click", openModal);
+  cancelAdd.addEventListener("click", closeModal);
+  saveAdd.addEventListener("click", saveCustomer);
+
+  modalBackdrop.addEventListener("click", (e) => {
+    if (e.target === modalBackdrop) closeModal();
+  });
+
+  searchInput.addEventListener("input", renderList);
+
+  // Auto-select last active customer if exists
+  const last = localStorage.getItem(ACTIVE_KEY);
+  if (last) selectedId = last;
+
+  renderList();
+</script>
+</body>
+</html>
