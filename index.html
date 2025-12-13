@@ -25,15 +25,13 @@
       <label>Default rate (₹ / kg) (optional)</label>
       <input type="number" id="defaultRate" step="0.01" min="0" placeholder="e.g. 230">
     </div>
+
     <div class="buttons">
       <button class="primary" id="generateRowsBtn">Generate rows</button>
       <button class="secondary" id="downloadImgBtn" disabled>Generate image</button>
-      <button class="secondary" onclick="window.location.href='daily-entry.html'">
-        Daily entry system
-      </button>
-      <button class="secondary" onclick="window.location.href='bills.html'">
-        Bills / Payments
-      </button>
+      <button class="secondary" onclick="window.location.href='daily-entry.html'">Daily entry system</button>
+      <button class="secondary" onclick="window.location.href='bills.html'">Bills / Payments</button>
+      <button class="secondary" onclick="window.location.href='customers.html'">Change customer</button>
     </div>
   </div>
 
@@ -77,6 +75,16 @@
 
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 <script>
+  const CUSTOMERS_KEY = "acsCustomers";
+  const ACTIVE_KEY    = "acsActiveCustomerId";
+
+  function getActiveCustomerId() { return localStorage.getItem(ACTIVE_KEY); }
+  const customerId = getActiveCustomerId();
+  if (!customerId) window.location.href = "customers.html";
+
+  const ENTRIES_KEY = `acsEntries:${customerId}`;
+  const BILLS_KEY   = `acsBills:${customerId}`;
+
   const fromDateInput = document.getElementById("fromDate");
   const toDateInput = document.getElementById("toDate");
   const defaultRateInput = document.getElementById("defaultRate");
@@ -88,9 +96,6 @@
   const summaryRange = document.getElementById("summaryRange");
   const daysLabel = document.getElementById("daysLabel");
 
-  const ENTRIES_KEY = "acsEntries";
-  const BILLS_KEY = "acsBills";
-
   let lastRangeStart = null;
   let lastRangeEnd = null;
 
@@ -98,7 +103,6 @@
     const t = new Date();
     return `${t.getFullYear()}-${String(t.getMonth()+1).padStart(2,"0")}-${String(t.getDate()).padStart(2,"0")}`;
   }
-
   function applyDateLimits() {
     const t = todayIso();
     fromDateInput.max = t;
@@ -106,15 +110,15 @@
   }
 
   function getStoredEntries() {
-    try { return JSON.parse(localStorage.getItem(ENTRIES_KEY)) || {}; }
-    catch { return {}; }
+    try { return JSON.parse(localStorage.getItem(ENTRIES_KEY)) || {}; } catch { return {}; }
+  }
+  function setStoredEntries(obj) {
+    localStorage.setItem(ENTRIES_KEY, JSON.stringify(obj));
   }
 
   function getBills() {
-    try { return JSON.parse(localStorage.getItem(BILLS_KEY)) || []; }
-    catch { return []; }
+    try { return JSON.parse(localStorage.getItem(BILLS_KEY)) || []; } catch { return []; }
   }
-
   function setBills(bills) {
     localStorage.setItem(BILLS_KEY, JSON.stringify(bills));
   }
@@ -128,7 +132,7 @@
     return "success";
   }
 
-  // lock only when payment started
+  // Lock only if payment started (loading/success)
   function isLockedDate(dateIso) {
     const bills = getBills();
     return bills.some(b => {
@@ -145,7 +149,6 @@
   function formatDateShort(d) {
     return `${String(d.getDate()).padStart(2,"0")}-${String(d.getMonth()+1).padStart(2,"0")}-${d.getFullYear()}`;
   }
-
   function setDaysLabel(start, end) {
     const diff = Math.round((end - start) / 86400000) + 1;
     daysLabel.textContent = diff > 0 ? `કુલ ${diff} દિવસનું હિસાબ` : "";
@@ -163,11 +166,9 @@
   function createRows() {
     const fromVal = fromDateInput.value;
     const toVal = toDateInput.value;
-
     if (!fromVal || !toVal) return alert("Please select both from and to dates.");
     if (fromVal > toVal) return alert("From date cannot be after To date.");
 
-    // ⛔ future block
     const t = todayIso();
     if (fromVal > t || toVal > t) return alert("Future dates are not allowed.");
 
@@ -218,7 +219,7 @@
         rateInput.value = defaultRate.toString();
       }
 
-      // 🔒 disable only when payment started
+      // 🔒 lock only if payment started
       if (isLockedDate(isoKey)) {
         kgInput.disabled = true;
         rateInput.disabled = true;
@@ -280,10 +281,10 @@
       const isoKey = ddmmyyyyToIso(tr.children[2].textContent.trim());
       if (!isoKey) return;
 
-      // ⛔ never save future
+      // never save future
       if (isoKey > t) return;
 
-      // 🔒 never save if locked (payment started)
+      // never save if locked (payment started)
       if (isLockedDate(isoKey)) return;
 
       const kgInput = tr.querySelector("input[placeholder='kg']");
@@ -296,15 +297,15 @@
       else if (stored[isoKey]) delete stored[isoKey];
     });
 
-    localStorage.setItem(ENTRIES_KEY, JSON.stringify(stored));
+    setStoredEntries(stored);
   }
 
-  function recomputeBillTotal(bill, entries) {
+  function recomputeBillTotal(rangeFrom, rangeTo, entries) {
     let sum = 0;
-    for (let d = new Date(bill.from); d <= new Date(bill.to); d.setDate(d.getDate()+1)) {
+    for (let d = new Date(rangeFrom); d <= new Date(rangeTo); d.setDate(d.getDate()+1)) {
       const iso = d.toISOString().slice(0,10);
       const e = entries[iso];
-      if (e && typeof e.kg !== "undefined" && typeof e.rate !== "undefined") {
+      if (e) {
         const kg = parseFloat(e.kg);
         const rate = parseFloat(e.rate);
         if (!isNaN(kg) && !isNaN(rate)) sum += kg * rate;
@@ -320,14 +321,13 @@
 
     const bills = getBills();
     const entries = getStoredEntries();
+    const total = recomputeBillTotal(fromVal, toVal, entries);
 
-    // find bill for exact range
+    // find exact range bill
     const idx = bills.findIndex(b => b.from === fromVal && b.to === toVal);
-    const total = recomputeBillTotal({ from: fromVal, to: toVal }, entries);
 
     if (idx === -1) {
       if (total <= 0) return;
-
       bills.push({
         id: "BILL-" + Date.now(),
         from: fromVal,
@@ -341,12 +341,11 @@
       return;
     }
 
-    // bill exists: if payment started, do NOT change total
+    // Bill exists: only update if payment not initialized (pending)
     const bill = bills[idx];
     const stage = statusFromAmounts(bill);
-    if (stage === "loading" || stage === "success") return;
+    if (stage !== "pending") return;
 
-    // pending => update total
     bill.total = total;
     bill.status = statusFromAmounts(bill);
     bills[idx] = bill;
@@ -386,13 +385,9 @@
   async function downloadImage() {
     if (summaryCard.style.display === "none") return;
 
-    // 1) sync editable rows -> daily entries
     syncReportEditsToDailyEntries();
-
-    // 2) create or update bill total for range (only if pending)
     upsertBillForCurrentRange();
 
-    // 3) render image
     const exportCard = buildExportCard();
     const canvas = await html2canvas(exportCard, { scale: 3, backgroundColor: "#ffffff" });
 
