@@ -9,28 +9,37 @@
   <link rel="stylesheet" href="daily-entry.css">
 </head>
 <body>
-
 <div class="wrapper">
   <h1>Daily Entry</h1>
 
   <div class="top-actions">
-    <button class="secondary" onclick="window.location.href='index.html'">← Report Card</button>
-    <button class="secondary" onclick="window.location.href='bills.html'">Bills / Payments</button>
-    <button class="secondary" id="exportBtn">Export data (JSON)</button>
-    <button class="secondary" id="importBtn">Import data (JSON)</button>
-    <button class="danger" id="clearAllBtn">Clear all entries</button>
+    <button class="secondary" onclick="window.location.href='index.html'">
+      ← Report Card
+    </button>
+    <button class="secondary" onclick="window.location.href='bills.html'">
+      Bills / Payments
+    </button>
+    <button class="secondary" id="exportBtn">
+      Export data (JSON)
+    </button>
+    <button class="secondary" id="importBtn">
+      Import data (JSON)
+    </button>
+    <button class="danger" id="clearAllBtn">
+      Clear all entries
+    </button>
     <input type="file" id="importFile" accept="application/json" />
   </div>
 
   <div class="card">
-    <label>Date</label>
+    <label for="date">Date</label>
     <input type="date" id="date" />
 
-    <label>Quantity (kg)</label>
-    <input type="number" id="kg" step="0.01" min="0" />
+    <label for="kg">Quantity (kg)</label>
+    <input type="number" id="kg" placeholder="e.g. 10" step="0.01" min="0" />
 
-    <label>Rate (₹ per kg)</label>
-    <input type="number" id="rate" step="0.01" min="0" />
+    <label for="rate">Rate (₹ per kg)</label>
+    <input type="number" id="rate" placeholder="e.g. 230" step="0.01" min="0" />
 
     <button class="primary" id="saveBtn">Save entry</button>
     <div class="status-text" id="statusMsg"></div>
@@ -48,161 +57,357 @@
 </div>
 
 <script>
-const ENTRIES_KEY = "acsEntries";
-const BILLS_KEY = "acsBills";
+  const ENTRIES_KEY = "acsEntries";
+  const BILLS_KEY   = "acsBills";
 
-const dateInput = document.getElementById("date");
-const kgInput = document.getElementById("kg");
-const rateInput = document.getElementById("rate");
-const saveBtn = document.getElementById("saveBtn");
-const statusMsg = document.getElementById("statusMsg");
-const entriesList = document.getElementById("entriesList");
-const clearAllBtn = document.getElementById("clearAllBtn");
-const exportBtn = document.getElementById("exportBtn");
-const importBtn = document.getElementById("importBtn");
-const importFile = document.getElementById("importFile");
+  const dateInput   = document.getElementById("date");
+  const kgInput     = document.getElementById("kg");
+  const rateInput   = document.getElementById("rate");
+  const saveBtn     = document.getElementById("saveBtn");
+  const statusMsg   = document.getElementById("statusMsg");
+  const entriesList = document.getElementById("entriesList");
+  const clearAllBtn = document.getElementById("clearAllBtn");
+  const exportBtn   = document.getElementById("exportBtn");
+  const importBtn   = document.getElementById("importBtn");
+  const importFile  = document.getElementById("importFile");
 
-/* ================= HELPERS ================= */
-
-function getStoredEntries() {
-  try {
-    return JSON.parse(localStorage.getItem(ENTRIES_KEY)) || {};
-  } catch {
-    return {};
+  function getStoredEntries() {
+    try {
+      const raw = localStorage.getItem(ENTRIES_KEY);
+      return raw ? JSON.parse(raw) : {};
+    } catch (e) {
+      console.error("Failed to parse entries", e);
+      return {};
+    }
   }
-}
-
-function setStoredEntries(obj) {
-  localStorage.setItem(ENTRIES_KEY, JSON.stringify(obj));
-}
-
-function setTodayDate() {
-  const t = new Date();
-  dateInput.value =
-    `${t.getFullYear()}-${String(t.getMonth()+1).padStart(2,"0")}-${String(t.getDate()).padStart(2,"0")}`;
-}
-
-/* ================= SAVE ENTRY ================= */
-
-saveBtn.addEventListener("click", () => {
-  const dateVal = dateInput.value;
-  const kg = parseFloat(kgInput.value);
-  const rate = parseFloat(rateInput.value);
-
-  if (!dateVal || isNaN(kg) || isNaN(rate)) {
-    statusMsg.textContent = "Please enter date, kg and rate.";
-    statusMsg.style.color = "#b91c1c";
-    return;
+  function setStoredEntries(obj) {
+    localStorage.setItem(ENTRIES_KEY, JSON.stringify(obj));
   }
 
-  const entries = getStoredEntries();
+  function getBills() {
+    try {
+      const raw = localStorage.getItem(BILLS_KEY);
+      return raw ? JSON.parse(raw) : [];
+    } catch (e) {
+      console.error("Failed to parse bills", e);
+      return [];
+    }
+  }
 
-  // 🔴 OVERWRITE CHECK
-  if (entries[dateVal]) {
-    const dateText = new Date(dateVal).toLocaleDateString("en-GB", {
-      day: "2-digit", month: "short", year: "numeric"
+  function statusFromAmounts(bill) {
+    const total = bill.total || 0;
+    const paid  = bill.paid  || 0;
+    if (total <= 0) return "pending";
+    if (paid <= 0) return "pending";
+    if (paid < total) return "loading";
+    return "success";
+  }
+
+  // strongest status for a date across bills
+  function statusForDate(dateIso) {
+    const bills = getBills();
+    const order = { pending: 1, loading: 2, success: 3 };
+    let best = null;
+
+    bills.forEach(bill => {
+      if (!bill.from || !bill.to) return;
+      if (bill.from <= dateIso && dateIso <= bill.to) {
+        const s = statusFromAmounts(bill);
+        if (!best || order[s] > order[best]) best = s;
+      }
     });
 
-    const confirmOverwrite = confirm(
-      `તારીખ ${dateText} ની એન્ટ્રી દાખલ થયેલ છે.\nશું તમે જૂની એન્ટ્રીના બદલે નવી એન્ટ્રી સેવ કરવા માંગો છો?`
-    );
+    return best; // null | pending | loading | success
+  }
 
-    if (!confirmOverwrite) {
-      statusMsg.textContent = "Save cancelled.";
-      statusMsg.style.color = "#92400e";
+  function isLockedDate(dateIso) {
+    return statusForDate(dateIso) === "success";
+  }
+
+  function setToday() {
+    const t = new Date();
+    const yyyy = t.getFullYear();
+    const mm = String(t.getMonth() + 1).padStart(2, "0");
+    const dd = String(t.getDate()).padStart(2, "0");
+    dateInput.value = `${yyyy}-${mm}-${dd}`;
+  }
+
+  function formatDateForGujaratiPrompt(dateIso) {
+    // show like "03 Dec 2025" (user asked like "3 dec 2025")
+    try {
+      return new Date(dateIso).toLocaleDateString("en-GB", {
+        day: "2-digit",
+        month: "short",
+        year: "numeric"
+      });
+    } catch {
+      return dateIso;
+    }
+  }
+
+  function loadEntryIntoForm(dateIso) {
+    const entries = getStoredEntries();
+    const existing = entries[dateIso];
+
+    if (existing) {
+      kgInput.value = existing.kg;
+      rateInput.value = existing.rate;
+      statusMsg.textContent = `Loaded: ${dateIso} (you can update and Save)`;
+      statusMsg.style.color = "#0369a1";
+    } else {
+      kgInput.value = "";
+      rateInput.value = "";
+      statusMsg.textContent = "";
+    }
+  }
+
+  // when user changes date manually, auto-load existing
+  dateInput.addEventListener("change", () => {
+    if (!dateInput.value) return;
+    loadEntryIntoForm(dateInput.value);
+  });
+
+  function refreshList() {
+    const entries = getStoredEntries();
+    let keys = Object.keys(entries).sort(); // ascending
+
+    if (keys.length === 0) {
+      entriesList.textContent = "No entries yet.";
+      entriesList.classList.add("muted");
       return;
     }
+
+    if (keys.length > 15) keys = keys.slice(-15);
+    keys = keys.reverse(); // newest first
+
+    entriesList.innerHTML = "";
+    entriesList.classList.remove("muted");
+
+    keys.forEach(dateIso => {
+      const e = entries[dateIso];
+      const total = (e.kg || 0) * (e.rate || 0);
+
+      const status = statusForDate(dateIso); // null | pending | loading | success
+      const locked = isLockedDate(dateIso);
+
+      const item = document.createElement("div");
+      item.className = "entry-item";
+      if (status === "pending") item.classList.add("entry-pending");
+      if (status === "loading") item.classList.add("entry-loading");
+      if (status === "success") item.classList.add("entry-success");
+
+      const left = document.createElement("div");
+      left.className = "entry-left";
+
+      const dateSpan = document.createElement("span");
+      dateSpan.className = "entry-date";
+      dateSpan.textContent = dateIso;
+      left.appendChild(dateSpan);
+
+      if (status) {
+        const pill = document.createElement("span");
+        pill.className =
+          "entry-status-pill " +
+          (status === "pending" ? "pill-pending" :
+           status === "loading" ? "pill-loading" : "pill-success");
+        pill.textContent =
+          status === "pending" ? "Pending bill" :
+          status === "loading" ? "Bill partial / waiting" :
+          "Bill paid (Locked)";
+        left.appendChild(pill);
+      }
+
+      const right = document.createElement("div");
+      right.style.display = "flex";
+      right.style.alignItems = "center";
+      right.style.gap = "10px";
+
+      const amountText = document.createElement("span");
+      amountText.textContent = `${e.kg} kg × ₹${e.rate} = ₹${total.toFixed(0)}`;
+
+      const actions = document.createElement("div");
+      actions.className = "entry-actions";
+
+      const editBtn = document.createElement("button");
+      editBtn.className = "small-btn edit";
+      editBtn.textContent = "Edit";
+      editBtn.addEventListener("click", () => {
+        dateInput.value = dateIso;
+        loadEntryIntoForm(dateIso);
+
+        if (locked) {
+          statusMsg.textContent = "This date is locked because the bill is fully paid.";
+          statusMsg.style.color = "#b91c1c";
+          return;
+        }
+
+        window.scrollTo({ top: 0, behavior: "smooth" });
+        kgInput.focus();
+      });
+
+      const delBtn = document.createElement("button");
+      delBtn.className = "small-btn delete";
+      delBtn.textContent = "Delete";
+      delBtn.addEventListener("click", () => {
+        if (locked) {
+          alert("આ તારીખની એન્ટ્રી લોક છે કારણ કે બિલ સંપૂર્ણ પેઈડ છે.");
+          return;
+        }
+
+        if (!confirm(`Delete entry for ${dateIso}?`)) return;
+        const all = getStoredEntries();
+        delete all[dateIso];
+        setStoredEntries(all);
+        refreshList();
+        statusMsg.textContent = `Deleted: ${dateIso}`;
+        statusMsg.style.color = "#b91c1c";
+
+        // reset form to today after delete (nice UX)
+        setToday();
+        kgInput.value = "";
+        rateInput.value = "";
+      });
+
+      actions.appendChild(editBtn);
+      actions.appendChild(delBtn);
+
+      right.appendChild(amountText);
+      right.appendChild(actions);
+
+      item.appendChild(left);
+      item.appendChild(right);
+      entriesList.appendChild(item);
+    });
   }
 
-  // Save / overwrite
-  entries[dateVal] = { kg, rate };
-  setStoredEntries(entries);
+  saveBtn.addEventListener("click", () => {
+    const dateVal = dateInput.value;
+    const kg   = parseFloat(kgInput.value);
+    const rate = parseFloat(rateInput.value);
 
-  statusMsg.textContent = `Saved: ${dateVal} → ${kg} kg × ₹${rate}`;
-  statusMsg.style.color = "#047857";
+    if (!dateVal || isNaN(kg) || isNaN(rate)) {
+      statusMsg.textContent = "Please enter date, kg and rate.";
+      statusMsg.style.color = "#b91c1c";
+      return;
+    }
 
-  refreshList();
+    // 🔒 lock check
+    if (isLockedDate(dateVal)) {
+      statusMsg.textContent = "This date is locked because the bill is fully paid.";
+      statusMsg.style.color = "#b91c1c";
+      return;
+    }
 
-  // 🔁 RESET INPUTS AFTER SAVE
-  kgInput.value = "";
-  rateInput.value = "";
-  setTodayDate();
-  kgInput.focus();
-});
+    const entries = getStoredEntries();
+    const exists = !!entries[dateVal];
 
-/* ================= LIST ================= */
+    // 🟡 overwrite confirmation (Gujarati)
+    if (exists) {
+      const pretty = formatDateForGujaratiPrompt(dateVal);
+      const ok = confirm(
+        `તારીખ ${pretty} ની એન્ટ્રી દાખલ થયેલ છે.\nશું તમે જૂની એન્ટ્રીના બદલે નવી એન્ટ્રી સેવ કરવા માંગો છો?`
+      );
+      if (!ok) {
+        statusMsg.textContent = "Overwrite cancelled.";
+        statusMsg.style.color = "#92400e";
+        return;
+      }
+    }
 
-function statusFromAmounts(bill) {
-  const total = bill.total || 0;
-  const paid = bill.paid || 0;
-  if (total <= 0) return "pending";
-  if (paid <= 0) return "pending";
-  if (paid < total) return "loading";
-  return "success";
-}
+    entries[dateVal] = { kg, rate };
+    setStoredEntries(entries);
 
-function getBills() {
-  try {
-    return JSON.parse(localStorage.getItem(BILLS_KEY)) || [];
-  } catch {
-    return [];
-  }
-}
+    statusMsg.textContent = `Saved: ${dateVal} → ${kg} kg × ₹${rate}`;
+    statusMsg.style.color = "#047857";
+    refreshList();
 
-function statusForDate(dateIso) {
-  const bills = getBills();
-  const order = { pending: 1, loading: 2, success: 3 };
-  let best = null;
+    // ✅ reset after save
+    kgInput.value = "";
+    rateInput.value = "";
+    setToday();
+    kgInput.focus();
+  });
 
-  bills.forEach(b => {
-    if (b.from <= dateIso && dateIso <= b.to) {
-      const s = statusFromAmounts(b);
-      if (!best || order[s] > order[best]) best = s;
+  clearAllBtn.addEventListener("click", () => {
+    if (confirm("Clear all saved entries?")) {
+      localStorage.removeItem(ENTRIES_KEY);
+      refreshList();
+      statusMsg.textContent = "All entries cleared.";
+      statusMsg.style.color = "#b91c1c";
+
+      setToday();
+      kgInput.value = "";
+      rateInput.value = "";
     }
   });
 
-  return best;
-}
-
-function refreshList() {
-  const entries = getStoredEntries();
-  let keys = Object.keys(entries).sort();
-  if (!keys.length) {
-    entriesList.textContent = "No entries yet.";
-    entriesList.classList.add("muted");
-    return;
-  }
-
-  keys = keys.slice(-15).reverse();
-  entriesList.innerHTML = "";
-  entriesList.classList.remove("muted");
-
-  keys.forEach(dateIso => {
-    const e = entries[dateIso];
-    const total = e.kg * e.rate;
-    const status = statusForDate(dateIso);
-
-    const item = document.createElement("div");
-    item.className = `entry-item ${status ? "entry-"+status : ""}`;
-
-    const left = document.createElement("div");
-    left.className = "entry-left";
-
-    left.innerHTML = `<span class="entry-date">${dateIso}</span>`;
-
-    const right = document.createElement("span");
-    right.textContent = `${e.kg} kg × ₹${e.rate} = ₹${total.toFixed(0)}`;
-
-    item.append(left, right);
-    entriesList.appendChild(item);
+  exportBtn.addEventListener("click", () => {
+    const entries = getStoredEntries();
+    const keys = Object.keys(entries);
+    if (keys.length === 0) {
+      statusMsg.textContent = "No data to export.";
+      statusMsg.style.color = "#b91c1c";
+      return;
+    }
+    const blob = new Blob([JSON.stringify(entries, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "acs-data.json";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    statusMsg.textContent = "Data exported as acs-data.json";
+    statusMsg.style.color = "#047857";
   });
-}
 
-/* ================= INIT ================= */
+  importBtn.addEventListener("click", () => importFile.click());
 
-setTodayDate();
-refreshList();
+  importFile.addEventListener("change", () => {
+    const file = importFile.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        const imported = JSON.parse(reader.result);
+        if (typeof imported !== "object" || imported === null) {
+          throw new Error("Invalid JSON structure");
+        }
+
+        const current = getStoredEntries();
+        let count = 0;
+
+        Object.keys(imported).forEach(key => {
+          const entry = imported[key];
+          if (entry && typeof entry.kg !== "undefined" && typeof entry.rate !== "undefined") {
+            // respect locks on import
+            if (isLockedDate(key)) return;
+            current[key] = { kg: entry.kg, rate: entry.rate };
+            count++;
+          }
+        });
+
+        setStoredEntries(current);
+        refreshList();
+        statusMsg.textContent = `Imported ${count} entries (existing dates overwritten).`;
+        statusMsg.style.color = "#047857";
+      } catch (e) {
+        console.error(e);
+        statusMsg.textContent = "Import failed: invalid JSON.";
+        statusMsg.style.color = "#b91c1c";
+      } finally {
+        importFile.value = "";
+      }
+    };
+
+    reader.readAsText(file);
+  });
+
+  // init
+  setToday();
+  refreshList();
 </script>
-
 </body>
 </html>
