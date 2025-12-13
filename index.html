@@ -225,6 +225,12 @@
   let lastExportFilename = null;
 
   const activeCustomer = getActiveCustomer();
+
+  // ✅ NEW: sanitize phone for WhatsApp deep link
+  const customerPhoneDigits = activeCustomer && activeCustomer.phone
+    ? String(activeCustomer.phone).replace(/\D/g, "")
+    : "";
+
   if (activeCustomer) {
     // Banner: name + ONLY phone
     acName.textContent = activeCustomer.displayName || "Unnamed customer";
@@ -497,9 +503,8 @@
   }
 
   function makeAutoFilename() {
-    // Rahul_Sharma_01-12-2025_to_09-12-2025.png
     const name = activeCustomer && activeCustomer.displayName ? activeCustomer.displayName : "Customer";
-    const fromVal = fromDateInput.value; // YYYY-MM-DD
+    const fromVal = fromDateInput.value;
     const toVal = toDateInput.value;
 
     function toDDMMYYYY(iso) {
@@ -520,7 +525,6 @@
     clone.classList.add("export-card");
     document.body.appendChild(clone);
 
-    // Replace inputs with text
     const cloneTbody = clone.querySelector("tbody");
     const cloneRows = cloneTbody.querySelectorAll("tr");
     const originalRows = entriesBody.querySelectorAll("tr");
@@ -575,7 +579,6 @@
     const file = await generateImageFile();
     if (!file) return;
 
-    // Download
     const url = URL.createObjectURL(file);
     const link = document.createElement("a");
     link.download = file.name;
@@ -584,19 +587,25 @@
     URL.revokeObjectURL(url);
   }
 
+  // ✅ UPDATED WHATSAPP LOGIC (fully integrated)
   async function sendOnWhatsApp() {
-    // If not generated yet, generate first
+    // Ensure file exists
     if (!lastExportFile) {
       const f = await generateImageFile();
       if (!f) return;
     }
 
-    // Best: Share sheet (WhatsApp appears on mobile)
+    // 1) BEST: Share sheet with file (WhatsApp will appear; usually avoids selecting number manually)
     try {
       if (navigator.canShare && navigator.canShare({ files: [lastExportFile] })) {
+        const msgText =
+          `તમારો રિપોર્ટ કાર્ડ તૈયાર છે.\n` +
+          `${activeCustomer?.displayName ? "Customer: " + activeCustomer.displayName + "\n" : ""}` +
+          `${fromDateInput.value && toDateInput.value ? "Range: " + fromDateInput.value + " to " + toDateInput.value : ""}`;
+
         await navigator.share({
           title: "Report Card",
-          text: "Here is your report card image.",
+          text: msgText,
           files: [lastExportFile]
         });
         return;
@@ -605,12 +614,22 @@
       console.error("Share failed", e);
     }
 
-    // Fallback: open WhatsApp with text only (user attaches image manually)
+    // 2) FALLBACK: Open WhatsApp DIRECTLY to customer's chat (eliminates number selection step)
     const msg = encodeURIComponent(
-      `Report ready: ${lastExportFilename || "report-card.png"}\n(If image not attached automatically, please send the downloaded image.)`
+      `તમારો રિપોર્ટ કાર્ડ તૈયાર છે.\n` +
+      `File: ${lastExportFilename || "report-card.png"}`
     );
+
+    if (customerPhoneDigits) {
+      // opens specific chat
+      window.open(`https://wa.me/91${customerPhoneDigits}?text=${msg}`, "_blank");
+      alert("WhatsApp opened to the customer. Attach the image (if not auto-shared) and press Send.");
+      return;
+    }
+
+    // 3) LAST fallback: generic WhatsApp open
     window.open(`https://wa.me/?text=${msg}`, "_blank");
-    alert("Your browser may not support sharing image directly. The image is saved—attach it in WhatsApp manually.");
+    alert("Customer phone not available. WhatsApp opened—please choose contact and send.");
   }
 
   generateRowsBtn.addEventListener("click", createRows);
