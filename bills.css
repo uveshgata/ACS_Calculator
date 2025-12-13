@@ -1,0 +1,110 @@
+/* ===============================
+   BILLS.CSS
+   Used ONLY by bills.html
+   =============================== */
+
+/* Bills list title sizing (optional tweak) */
+.list-card h2 {
+  font-size: 16px;
+}
+
+/* ===============================
+   Bill Item Base
+   =============================== */
+
+.bill-item {
+  font-size: 13px;
+  padding: 8px;
+  border-bottom: 1px solid #e5e7eb;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  border-radius: 10px;
+  margin-bottom: 6px;
+  background: #f9fafb;
+  border: 1px solid transparent;
+}
+
+.bill-item:last-child {
+  border-bottom: none;
+}
+
+/* Background colors by status */
+.bill-pending {
+  background: #f9fafb;
+  border-color: #e5e7eb;
+}
+
+.bill-loading {
+  background: #fefce8; /* yellow tint */
+  border-color: #facc15;
+}
+
+.bill-success {
+  background: #ecfdf5; /* green tint */
+  border-color: #16a34a;
+}
+
+/* Header row */
+.bill-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+.bill-range {
+  font-weight: 600;
+  color: #111827;
+}
+
+.bill-id {
+  font-size: 11px;
+  color: #9ca3af;
+}
+
+/* Meta row (pill + amounts + button) */
+.bill-meta {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+}
+
+.bill-amounts {
+  font-size: 12px;
+  color: #374151;
+}
+
+/* Status pills (specific to bills page) */
+.status-pending {
+  background: #e5e7eb;
+  color: #374151;
+}
+
+.status-loading {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.status-success {
+  background: #dcfce7;
+  color: #166534;
+}
+
+/* Add payment button */
+.pay-btn {
+  font-size: 11px;
+  padding: 4px 8px;
+  border-radius: 999px;
+  border: none;
+  background: #e0f2fe;
+  color: #0369a1;
+  cursor: pointer;
+  transition: 0.15s;
+}
+
+.pay-btn:hover {
+  background: #bfdbfe;
+}
