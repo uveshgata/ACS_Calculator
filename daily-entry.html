@@ -13,34 +13,29 @@
   <h1>Daily Entry</h1>
 
   <div class="top-actions">
-    <button class="secondary" onclick="window.location.href='index.html'">
-      ← Report Card
-    </button>
-    <button class="secondary" onclick="window.location.href='bills.html'">
-      Bills / Payments
-    </button>
-    <button class="secondary" id="exportBtn">Export data (JSON)</button>
-    <button class="secondary" id="importBtn">Import data (JSON)</button>
+    <button class="secondary" onclick="window.location.href='index.html'">← Report Card</button>
+    <button class="secondary" onclick="window.location.href='bills.html'">Bills / Payments</button>
+    <button class="secondary" onclick="window.location.href='customers.html'">Change customer</button>
     <button class="danger" id="clearAllBtn">Clear all entries</button>
-    <input type="file" id="importFile" accept="application/json" />
   </div>
 
   <div class="card">
+    <div id="activeCustomerLine" class="note" style="margin-bottom:10px;"></div>
+
     <label for="date">Date</label>
     <input type="date" id="date" />
 
     <label for="kg">Quantity (kg)</label>
-    <input type="number" id="kg" placeholder="e.g. 10" step="0.01" min="0" />
+    <input type="number" id="kg" placeholder="e.g. 10" step="1" min="0" />
 
     <label for="rate">Rate (₹ per kg)</label>
-    <input type="number" id="rate" placeholder="e.g. 230" step="0.01" min="0" />
+    <input type="number" id="rate" placeholder="e.g. 230" step="10" min="0" />
 
     <button class="primary" id="saveBtn">Save entry</button>
     <div class="status-text" id="statusMsg"></div>
 
     <div class="note">
-      Entries are stored only in this browser (local).
-      Use Export / Import if you switch device.
+      Customer-specific data is stored in this browser.
     </div>
   </div>
 
@@ -51,8 +46,25 @@
 </div>
 
 <script>
-  const ENTRIES_KEY = "acsEntries";
-  const BILLS_KEY   = "acsBills";
+  const CUSTOMERS_KEY = "acsCustomers";
+  const ACTIVE_KEY    = "acsActiveCustomerId";
+
+  function getActiveCustomerId() {
+    return localStorage.getItem(ACTIVE_KEY);
+  }
+  function getCustomers() {
+    try { return JSON.parse(localStorage.getItem(CUSTOMERS_KEY)) || []; } catch { return []; }
+  }
+  function getActiveCustomer() {
+    const id = getActiveCustomerId();
+    return getCustomers().find(c => c.customerId === id) || null;
+  }
+
+  const customerId = getActiveCustomerId();
+  if (!customerId) window.location.href = "customers.html";
+
+  const ENTRIES_KEY = `acsEntries:${customerId}`;
+  const BILLS_KEY   = `acsBills:${customerId}`;
 
   const dateInput   = document.getElementById("date");
   const kgInput     = document.getElementById("kg");
@@ -61,9 +73,12 @@
   const statusMsg   = document.getElementById("statusMsg");
   const entriesList = document.getElementById("entriesList");
   const clearAllBtn = document.getElementById("clearAllBtn");
-  const exportBtn   = document.getElementById("exportBtn");
-  const importBtn   = document.getElementById("importBtn");
-  const importFile  = document.getElementById("importFile");
+  const activeCustomerLine = document.getElementById("activeCustomerLine");
+
+  const activeCustomer = getActiveCustomer();
+  activeCustomerLine.textContent = activeCustomer
+    ? `Active customer: ${activeCustomer.displayName}${activeCustomer.phone ? " • " + activeCustomer.phone : ""}`
+    : `Active customer ID: ${customerId}`;
 
   function todayIso() {
     const t = new Date();
@@ -71,22 +86,14 @@
   }
 
   function getStoredEntries() {
-    try {
-      return JSON.parse(localStorage.getItem(ENTRIES_KEY)) || {};
-    } catch {
-      return {};
-    }
+    try { return JSON.parse(localStorage.getItem(ENTRIES_KEY)) || {}; } catch { return {}; }
   }
   function setStoredEntries(obj) {
     localStorage.setItem(ENTRIES_KEY, JSON.stringify(obj));
   }
 
   function getBills() {
-    try {
-      return JSON.parse(localStorage.getItem(BILLS_KEY)) || [];
-    } catch {
-      return [];
-    }
+    try { return JSON.parse(localStorage.getItem(BILLS_KEY)) || []; } catch { return []; }
   }
   function setBills(bills) {
     localStorage.setItem(BILLS_KEY, JSON.stringify(bills));
@@ -101,8 +108,6 @@
     return "success";
   }
 
-  // Returns best bill-stage for date:
-  // null (no bill), "pending", "loading", "success"
   function billStageForDate(dateIso) {
     const bills = getBills();
     const order = { pending: 1, loading: 2, success: 3 };
@@ -116,18 +121,15 @@
       }
     });
 
-    return best;
+    return best; // null | pending | loading | success
   }
 
-  // 🔒 Only lock when payment started (loading/success)
+  // lock only when payment started (loading/success)
   function isLockedDate(dateIso) {
     const stage = billStageForDate(dateIso);
     return stage === "loading" || stage === "success";
   }
 
-  // Recompute totals for ALL bills that include dateIso.
-  // If bill is pending -> total can change; if loading/success -> we still recompute safely
-  // but entry edits won't happen anyway due to lock check.
   function recomputeBillsForDate(dateIso) {
     const entries = getStoredEntries();
     const bills = getBills();
@@ -137,30 +139,23 @@
       if (!bill.from || !bill.to) return;
       if (!(bill.from <= dateIso && dateIso <= bill.to)) return;
 
-      // sum entries between from/to
       let sum = 0;
       for (let d = new Date(bill.from); d <= new Date(bill.to); d.setDate(d.getDate()+1)) {
         const iso = d.toISOString().slice(0,10);
         const e = entries[iso];
-        if (e && typeof e.kg !== "undefined" && typeof e.rate !== "undefined") {
+        if (e) {
           const kg = parseFloat(e.kg);
           const rate = parseFloat(e.rate);
           if (!isNaN(kg) && !isNaN(rate)) sum += kg * rate;
         }
       }
 
-      const newTotal = sum;
-
-      if ((bill.total || 0) !== newTotal) {
-        bill.total = newTotal;
-        // status might change if paid >= newTotal
-        bill.status = statusFromAmounts(bill);
-        changed = true;
-      } else {
-        // still keep status consistent
-        const newStatus = statusFromAmounts(bill);
-        if (bill.status !== newStatus) {
-          bill.status = newStatus;
+      const stage = statusFromAmounts(bill);
+      // Only update totals if still pending (payment not initialized)
+      if (stage === "pending") {
+        if ((bill.total || 0) !== sum) {
+          bill.total = sum;
+          bill.status = statusFromAmounts(bill);
           changed = true;
         }
       }
@@ -172,26 +167,18 @@
   function applyDateLimits() {
     dateInput.max = todayIso();
   }
-
   function setTodayDate() {
     dateInput.value = todayIso();
   }
-
   function formatDateForGujaratiPrompt(dateIso) {
     try {
-      return new Date(dateIso).toLocaleDateString("en-GB", {
-        day: "2-digit",
-        month: "short",
-        year: "numeric"
-      });
-    } catch {
-      return dateIso;
-    }
+      return new Date(dateIso).toLocaleDateString("en-GB", { day:"2-digit", month:"short", year:"numeric" });
+    } catch { return dateIso; }
   }
 
   function refreshList() {
     const entries = getStoredEntries();
-    let keys = Object.keys(entries).sort(); // ascending
+    let keys = Object.keys(entries).sort();
     if (keys.length === 0) {
       entriesList.textContent = "No entries yet.";
       entriesList.classList.add("muted");
@@ -206,7 +193,7 @@
     keys.forEach(dateIso => {
       const e = entries[dateIso];
       const total = (e.kg || 0) * (e.rate || 0);
-      const stage = billStageForDate(dateIso); // null | pending | loading | success
+      const stage = billStageForDate(dateIso);
       const locked = isLockedDate(dateIso);
 
       const item = document.createElement("div");
@@ -228,12 +215,10 @@
         pill.className = "entry-status-pill " +
           (stage === "pending" ? "pill-pending" :
            stage === "loading" ? "pill-loading" : "pill-success");
-
         pill.textContent =
           stage === "pending" ? "Bill pending (editable)" :
-          stage === "loading" ? "Bill partial (locked)" :
+          stage === "loading" ? "Payment started (locked)" :
           "Bill paid (locked)";
-
         left.appendChild(pill);
       }
 
@@ -251,20 +236,12 @@
       const editBtn = document.createElement("button");
       editBtn.className = "small-btn edit";
       editBtn.textContent = "Edit";
-      editBtn.disabled = locked; // only locked when payment started
-      editBtn.title = locked ? "Locked (payment started)" : "Edit entry";
-
+      editBtn.disabled = locked;
       editBtn.addEventListener("click", () => {
+        if (locked) return;
         dateInput.value = dateIso;
         kgInput.value = e.kg;
         rateInput.value = e.rate;
-
-        if (locked) {
-          statusMsg.textContent = "Locked: payment already started for this bill.";
-          statusMsg.style.color = "#b91c1c";
-          return;
-        }
-
         statusMsg.textContent = `Editing: ${dateIso} (update and Save)`;
         statusMsg.style.color = "#0369a1";
         window.scrollTo({ top: 0, behavior: "smooth" });
@@ -275,27 +252,23 @@
       delBtn.className = "small-btn delete";
       delBtn.textContent = "Delete";
       delBtn.disabled = locked;
-      delBtn.title = locked ? "Locked (payment started)" : "Delete entry";
-
       delBtn.addEventListener("click", () => {
         if (locked) {
           alert("આ તારીખની એન્ટ્રી લોક છે કારણ કે પેમેન્ટ શરૂ થઈ ગયું છે.");
           return;
         }
-
         if (!confirm(`Delete entry for ${dateIso}?`)) return;
+
         const all = getStoredEntries();
         delete all[dateIso];
         setStoredEntries(all);
 
-        // update pending bill totals if this date belongs to a bill
         recomputeBillsForDate(dateIso);
 
         refreshList();
         statusMsg.textContent = `Deleted: ${dateIso}`;
         statusMsg.style.color = "#b91c1c";
 
-        // reset form nicely
         setTodayDate();
         kgInput.value = "";
         rateInput.value = "";
@@ -315,7 +288,7 @@
 
   saveBtn.addEventListener("click", () => {
     const dateVal = dateInput.value;
-    const kg   = parseFloat(kgInput.value);
+    const kg = parseFloat(kgInput.value);
     const rate = parseFloat(rateInput.value);
 
     if (!dateVal || isNaN(kg) || isNaN(rate)) {
@@ -324,7 +297,7 @@
       return;
     }
 
-    // ⛔ Future date block
+    // Future block
     const t = todayIso();
     if (dateVal > t) {
       statusMsg.textContent = "Future date entry is not allowed.";
@@ -332,7 +305,7 @@
       return;
     }
 
-    // 🔒 Lock only if payment started (loading/success)
+    // Lock only if payment started
     if (isLockedDate(dateVal)) {
       statusMsg.textContent = "Locked: payment already started for this bill.";
       statusMsg.style.color = "#b91c1c";
@@ -342,7 +315,6 @@
     const entries = getStoredEntries();
     const exists = !!entries[dateVal];
 
-    // Gujarati overwrite confirm if exists
     if (exists) {
       const pretty = formatDateForGujaratiPrompt(dateVal);
       const ok = confirm(
@@ -358,14 +330,12 @@
     entries[dateVal] = { kg, rate };
     setStoredEntries(entries);
 
-    // if this date belongs to any bill (pending/editable), update bill total
     recomputeBillsForDate(dateVal);
 
     statusMsg.textContent = `Saved: ${dateVal} → ${kg} kg × ₹${rate}`;
     statusMsg.style.color = "#047857";
     refreshList();
 
-    // reset
     kgInput.value = "";
     rateInput.value = "";
     setTodayDate();
@@ -373,7 +343,7 @@
   });
 
   clearAllBtn.addEventListener("click", () => {
-    if (confirm("Clear all saved entries?")) {
+    if (confirm("Clear all saved entries for this customer?")) {
       localStorage.removeItem(ENTRIES_KEY);
       refreshList();
       statusMsg.textContent = "All entries cleared.";
@@ -384,80 +354,6 @@
     }
   });
 
-  exportBtn.addEventListener("click", () => {
-    const entries = getStoredEntries();
-    const keys = Object.keys(entries);
-    if (keys.length === 0) {
-      statusMsg.textContent = "No data to export.";
-      statusMsg.style.color = "#b91c1c";
-      return;
-    }
-    const blob = new Blob([JSON.stringify(entries, null, 2)], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "acs-data.json";
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-    statusMsg.textContent = "Data exported as acs-data.json";
-    statusMsg.style.color = "#047857";
-  });
-
-  importBtn.addEventListener("click", () => importFile.click());
-
-  importFile.addEventListener("change", () => {
-    const file = importFile.files[0];
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.onload = () => {
-      try {
-        const imported = JSON.parse(reader.result);
-        if (typeof imported !== "object" || imported === null) throw new Error("Invalid JSON");
-
-        const current = getStoredEntries();
-        let count = 0;
-        const t = todayIso();
-
-        Object.keys(imported).forEach(key => {
-          const entry = imported[key];
-          if (!entry || typeof entry.kg === "undefined" || typeof entry.rate === "undefined") return;
-
-          // prevent future and locked edits on import
-          if (key > t) return;
-          if (isLockedDate(key)) return;
-
-          current[key] = { kg: entry.kg, rate: entry.rate };
-          count++;
-        });
-
-        setStoredEntries(current);
-
-        // recompute ALL bills (safe)
-        // (cheap, number of bills is small)
-        const bills = getBills();
-        bills.forEach(b => {
-          if (!b.from || !b.to) return;
-          recomputeBillsForDate(b.from);
-        });
-
-        refreshList();
-        statusMsg.textContent = `Imported ${count} entries (existing dates overwritten where allowed).`;
-        statusMsg.style.color = "#047857";
-      } catch (e) {
-        console.error(e);
-        statusMsg.textContent = "Import failed: invalid JSON.";
-        statusMsg.style.color = "#b91c1c";
-      } finally {
-        importFile.value = "";
-      }
-    };
-    reader.readAsText(file);
-  });
-
-  // init
   applyDateLimits();
   setTodayDate();
   refreshList();
