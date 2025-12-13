@@ -9,7 +9,6 @@
   <link rel="stylesheet" href="index.css">
 
   <style>
-    /* Small, clean customer banner (page-level) */
     .active-customer-banner{
       background:#ffffff;
       border:1px solid #e5e7eb;
@@ -22,50 +21,24 @@
       align-items:center;
       gap:10px;
     }
-    .ac-left{
-      display:flex;
-      flex-direction:column;
-      gap:2px;
-      min-width:0;
-    }
+    .ac-left{ display:flex; flex-direction:column; gap:2px; min-width:0; }
     .ac-title{
-      font-size:12px;
-      color:#6b7280;
-      font-weight:700;
-      letter-spacing:.02em;
-      text-transform:uppercase;
+      font-size:12px; color:#6b7280; font-weight:700; letter-spacing:.02em; text-transform:uppercase;
     }
     .ac-name{
-      font-size:15px;
-      font-weight:800;
-      color:#111827;
-      line-height:1.2;
-      white-space:nowrap;
-      overflow:hidden;
-      text-overflow:ellipsis;
-      max-width: 320px;
+      font-size:15px; font-weight:800; color:#111827; line-height:1.2;
+      white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width: 320px;
     }
     .ac-sub{
-      font-size:12px;
-      color:#6b7280;
-      white-space:nowrap;
-      overflow:hidden;
-      text-overflow:ellipsis;
-      max-width: 320px;
+      font-size:12px; color:#6b7280;
+      white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width: 320px;
     }
     .ac-btn{
-      padding:8px 12px;
-      border-radius:999px;
-      border:none;
-      background:#e5e7eb;
-      color:#111827;
-      font-weight:700;
-      cursor:pointer;
-      white-space:nowrap;
+      padding:8px 12px; border-radius:999px; border:none;
+      background:#e5e7eb; color:#111827; font-weight:700; cursor:pointer; white-space:nowrap;
     }
     .ac-btn:hover{ filter:brightness(.98); }
 
-    /* Report-card customer block (inside header; exports to image) */
     .customer-block{
       margin-top:10px;
       padding:10px 12px;
@@ -81,15 +54,45 @@
       color:#ffffff;
       letter-spacing:.01em;
     }
-    .customer-block .line2{
-      margin-top:4px;
-      font-size:12px;
-      color: rgba(255,255,255,0.9);
-      font-weight:600;
+
+    .share-row{
+      display:flex;
+      gap:10px;
+      margin-top:10px;
+      flex-wrap:wrap;
     }
-    .customer-block .muted{
-      color: rgba(255,255,255,0.75);
-      font-weight:600;
+    .share-row button{
+      border:none;
+      border-radius:999px;
+      padding:10px 14px;
+      font-size:14px;
+      font-weight:700;
+      cursor:pointer;
+      transition:.15s;
+      width:100%;
+      flex:1 1 160px;
+    }
+    .btn-whatsapp{
+      background:#dcfce7;
+      color:#166534;
+    }
+    .btn-whatsapp:disabled{
+      opacity:.5;
+      cursor:not-allowed;
+    }
+
+    /* export off-screen */
+    .export-card {
+      position: fixed;
+      left: -9999px;
+      top: 0;
+      width: 420px;
+      background: #ffffff;
+      border-radius: 24px;
+      box-shadow: none;
+      margin: 0;
+      display: flex;
+      flex-direction: column;
     }
   </style>
 </head>
@@ -127,19 +130,21 @@
       <button class="secondary" onclick="window.location.href='daily-entry.html'">Daily entry system</button>
       <button class="secondary" onclick="window.location.href='bills.html'">Bills / Payments</button>
     </div>
+
+    <!-- ✅ Share row -->
+    <div class="share-row">
+      <button class="btn-whatsapp" id="whatsappBtn" disabled>Send on WhatsApp</button>
+    </div>
   </div>
 
-  <div id="summaryCard">
+  <div id="summaryCard" style="display:none; flex-direction:column;">
     <div class="card-header">
       <h2 style="color:#D4AF37">ASHRAFI CHICKEN SHOP</h2>
       <h3>REPORT CARD</h3>
 
-      <!-- ✅ Premium customer block (included in exported image) -->
+      <!-- ✅ Customer line (no ID) -->
       <div class="customer-block">
         <div class="line1" id="customerLine1">Customer: —</div>
-        <div class="line2">
-          <span class="muted">Customer ID:</span> <span id="customerLine2">—</span>
-        </div>
       </div>
 
       <div class="range" id="summaryRange"></div>
@@ -184,8 +189,7 @@
 
   function getActiveCustomerId() { return localStorage.getItem(ACTIVE_KEY); }
   function getCustomers() {
-    try { return JSON.parse(localStorage.getItem(CUSTOMERS_KEY)) || []; }
-    catch { return []; }
+    try { return JSON.parse(localStorage.getItem(CUSTOMERS_KEY)) || []; } catch { return []; }
   }
   function getActiveCustomer() {
     const id = getActiveCustomerId();
@@ -198,40 +202,43 @@
   const ENTRIES_KEY = `acsEntries:${customerId}`;
   const BILLS_KEY   = `acsBills:${customerId}`;
 
-  // Page-level clear display
   const acName = document.getElementById("acName");
   const acSub  = document.getElementById("acSub");
 
-  // Card-level (export) premium block
   const customerLine1 = document.getElementById("customerLine1");
-  const customerLine2 = document.getElementById("customerLine2");
-
-  const activeCustomer = getActiveCustomer();
-  if (activeCustomer) {
-    const phone = activeCustomer.phone ? ` • ${activeCustomer.phone}` : "";
-    acName.textContent = activeCustomer.displayName || "Unnamed customer";
-    acSub.textContent  = `ID: ${activeCustomer.customerId}${phone}`;
-
-    customerLine1.textContent = `Customer: ${activeCustomer.displayName || "Unnamed"}${activeCustomer.phone ? " (" + activeCustomer.phone + ")" : ""}`;
-    customerLine2.textContent = activeCustomer.customerId;
-  } else {
-    acName.textContent = "Unknown customer";
-    acSub.textContent  = `ID: ${customerId}`;
-    customerLine1.textContent = "Customer: Unknown";
-    customerLine2.textContent = customerId;
-  }
 
   const fromDateInput = document.getElementById("fromDate");
   const toDateInput = document.getElementById("toDate");
   const defaultRateInput = document.getElementById("defaultRate");
   const generateRowsBtn = document.getElementById("generateRowsBtn");
   const downloadImgBtn = document.getElementById("downloadImgBtn");
+  const whatsappBtn = document.getElementById("whatsappBtn");
 
   const summaryCard = document.getElementById("summaryCard");
   const entriesBody = document.getElementById("entriesBody");
   const grandTotalCell = document.getElementById("grandTotalCell");
   const summaryRange = document.getElementById("summaryRange");
   const daysLabel = document.getElementById("daysLabel");
+
+  // Keep last generated image file for sharing
+  let lastExportFile = null;
+  let lastExportFilename = null;
+
+  const activeCustomer = getActiveCustomer();
+  if (activeCustomer) {
+    // Banner: name + ONLY phone
+    acName.textContent = activeCustomer.displayName || "Unnamed customer";
+    acSub.textContent  = activeCustomer.phone ? `📞 ${activeCustomer.phone}` : "";
+
+    // Report image: Customer: Name (phone)
+    customerLine1.textContent =
+      `Customer: ${activeCustomer.displayName || "Unnamed"}`
+      + (activeCustomer.phone ? ` (${activeCustomer.phone})` : "");
+  } else {
+    acName.textContent = "Unknown customer";
+    acSub.textContent  = "";
+    customerLine1.textContent = "Customer: Unknown";
+  }
 
   function todayIso() {
     const t = new Date();
@@ -393,6 +400,12 @@
 
     summaryCard.style.display = "flex";
     downloadImgBtn.disabled = false;
+
+    // reset share state
+    lastExportFile = null;
+    lastExportFilename = null;
+    whatsappBtn.disabled = true;
+
     updateGrandTotal();
   }
 
@@ -476,6 +489,31 @@
     setBills(bills);
   }
 
+  function safeFileNamePart(s) {
+    return String(s || "")
+      .trim()
+      .replace(/\s+/g, "_")
+      .replace(/[^a-zA-Z0-9_\-]/g, "");
+  }
+
+  function makeAutoFilename() {
+    // Rahul_Sharma_01-12-2025_to_09-12-2025.png
+    const name = activeCustomer && activeCustomer.displayName ? activeCustomer.displayName : "Customer";
+    const fromVal = fromDateInput.value; // YYYY-MM-DD
+    const toVal = toDateInput.value;
+
+    function toDDMMYYYY(iso) {
+      if (!iso || iso.split("-").length !== 3) return "NA";
+      const [y,m,d] = iso.split("-");
+      return `${d}-${m}-${y}`;
+    }
+
+    const fromTxt = toDDMMYYYY(fromVal);
+    const toTxt = toDDMMYYYY(toVal);
+
+    return `${safeFileNamePart(name)}_${fromTxt}_to_${toTxt}.png`;
+  }
+
   function buildExportCard() {
     const clone = summaryCard.cloneNode(true);
     clone.id = "summaryCardExport";
@@ -507,25 +545,77 @@
     return clone;
   }
 
-  async function downloadImage() {
-    if (summaryCard.style.display === "none") return;
+  async function generateImageFile() {
+    if (summaryCard.style.display === "none") return null;
 
+    // Sync edits + bill
     syncReportEditsToDailyEntries();
     upsertBillForCurrentRange();
 
     const exportCard = buildExportCard();
     const canvas = await html2canvas(exportCard, { scale: 3, backgroundColor: "#ffffff" });
-
-    const link = document.createElement("a");
-    link.download = "report-card.png";
-    link.href = canvas.toDataURL("image/png");
-    link.click();
-
     document.body.removeChild(exportCard);
+
+    const filename = makeAutoFilename();
+
+    const blob = await new Promise(resolve => canvas.toBlob(resolve, "image/png", 1.0));
+    if (!blob) return null;
+
+    const file = new File([blob], filename, { type: "image/png" });
+
+    lastExportFile = file;
+    lastExportFilename = filename;
+
+    whatsappBtn.disabled = false;
+
+    return file;
+  }
+
+  async function downloadImage() {
+    const file = await generateImageFile();
+    if (!file) return;
+
+    // Download
+    const url = URL.createObjectURL(file);
+    const link = document.createElement("a");
+    link.download = file.name;
+    link.href = url;
+    link.click();
+    URL.revokeObjectURL(url);
+  }
+
+  async function sendOnWhatsApp() {
+    // If not generated yet, generate first
+    if (!lastExportFile) {
+      const f = await generateImageFile();
+      if (!f) return;
+    }
+
+    // Best: Share sheet (WhatsApp appears on mobile)
+    try {
+      if (navigator.canShare && navigator.canShare({ files: [lastExportFile] })) {
+        await navigator.share({
+          title: "Report Card",
+          text: "Here is your report card image.",
+          files: [lastExportFile]
+        });
+        return;
+      }
+    } catch (e) {
+      console.error("Share failed", e);
+    }
+
+    // Fallback: open WhatsApp with text only (user attaches image manually)
+    const msg = encodeURIComponent(
+      `Report ready: ${lastExportFilename || "report-card.png"}\n(If image not attached automatically, please send the downloaded image.)`
+    );
+    window.open(`https://wa.me/?text=${msg}`, "_blank");
+    alert("Your browser may not support sharing image directly. The image is saved—attach it in WhatsApp manually.");
   }
 
   generateRowsBtn.addEventListener("click", createRows);
   downloadImgBtn.addEventListener("click", downloadImage);
+  whatsappBtn.addEventListener("click", sendOnWhatsApp);
 
   applyDateLimits();
 </script>
