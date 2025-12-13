@@ -25,7 +25,6 @@
       <label>Default rate (₹ / kg) (optional)</label>
       <input type="number" id="defaultRate" step="0.01" min="0" placeholder="e.g. 230">
     </div>
-
     <div class="buttons">
       <button class="primary" id="generateRowsBtn">Generate rows</button>
       <button class="secondary" id="downloadImgBtn" disabled>Generate image</button>
@@ -95,24 +94,25 @@
   let lastRangeStart = null;
   let lastRangeEnd = null;
 
+  function todayIso() {
+    const t = new Date();
+    return `${t.getFullYear()}-${String(t.getMonth()+1).padStart(2,"0")}-${String(t.getDate()).padStart(2,"0")}`;
+  }
+
+  function applyDateLimits() {
+    const t = todayIso();
+    fromDateInput.max = t;
+    toDateInput.max = t;
+  }
+
   function getStoredEntries() {
-    try {
-      const raw = localStorage.getItem(ENTRIES_KEY);
-      return raw ? JSON.parse(raw) : {};
-    } catch (e) {
-      console.error("Failed to parse entries", e);
-      return {};
-    }
+    try { return JSON.parse(localStorage.getItem(ENTRIES_KEY)) || {}; }
+    catch { return {}; }
   }
 
   function getBills() {
-    try {
-      const raw = localStorage.getItem(BILLS_KEY);
-      return raw ? JSON.parse(raw) : [];
-    } catch (e) {
-      console.error("Failed to parse bills", e);
-      return [];
-    }
+    try { return JSON.parse(localStorage.getItem(BILLS_KEY)) || []; }
+    catch { return []; }
   }
 
   function setBills(bills) {
@@ -128,49 +128,27 @@
     return "success";
   }
 
-  function statusForDate(dateIso) {
-    const bills = getBills();
-    const order = { pending: 1, loading: 2, success: 3 };
-    let best = null;
-
-    bills.forEach(bill => {
-      if (!bill.from || !bill.to) return;
-      if (bill.from <= dateIso && dateIso <= bill.to) {
-        const s = statusFromAmounts(bill);
-        if (!best || order[s] > order[best]) best = s;
-      }
-    });
-
-    return best;
-  }
-
+  // lock only when payment started
   function isLockedDate(dateIso) {
-    return statusForDate(dateIso) === "success";
+    const bills = getBills();
+    return bills.some(b => {
+      if (!b.from || !b.to) return false;
+      if (!(b.from <= dateIso && dateIso <= b.to)) return false;
+      const s = statusFromAmounts(b);
+      return s === "loading" || s === "success";
+    });
   }
 
   function formatDateDisplay(d) {
-    const opts = { day: "2-digit", month: "long", year: "numeric" };
-    return d.toLocaleDateString("en-GB", opts);
+    return d.toLocaleDateString("en-GB", { day: "2-digit", month: "long", year: "numeric" });
   }
-
   function formatDateShort(d) {
-    const dd = String(d.getDate()).padStart(2, "0");
-    const mm = String(d.getMonth() + 1).padStart(2, "0");
-    const yyyy = d.getFullYear();
-    return `${dd}-${mm}-${yyyy}`;
+    return `${String(d.getDate()).padStart(2,"0")}-${String(d.getMonth()+1).padStart(2,"0")}-${d.getFullYear()}`;
   }
 
   function setDaysLabel(start, end) {
-    const msPerDay = 24 * 60 * 60 * 1000;
-    const diff = Math.round((end - start) / msPerDay) + 1;
+    const diff = Math.round((end - start) / 86400000) + 1;
     daysLabel.textContent = diff > 0 ? `કુલ ${diff} દિવસનું હિસાબ` : "";
-  }
-
-  function ddmmyyyyToIso(dateText) {
-    const parts = String(dateText).split("-");
-    if (parts.length !== 3) return null;
-    const [dd, mm, yyyy] = parts;
-    return `${yyyy}-${mm.padStart(2,"0")}-${dd.padStart(2,"0")}`;
   }
 
   function updateGrandTotal() {
@@ -186,18 +164,15 @@
     const fromVal = fromDateInput.value;
     const toVal = toDateInput.value;
 
-    if (!fromVal || !toVal) {
-      alert("Please select both from and to dates.");
-      return;
-    }
+    if (!fromVal || !toVal) return alert("Please select both from and to dates.");
+    if (fromVal > toVal) return alert("From date cannot be after To date.");
+
+    // ⛔ future block
+    const t = todayIso();
+    if (fromVal > t || toVal > t) return alert("Future dates are not allowed.");
 
     const start = new Date(fromVal);
     const end = new Date(toVal);
-
-    if (start > end) {
-      alert("From date cannot be after To date.");
-      return;
-    }
 
     lastRangeStart = new Date(start);
     lastRangeEnd = new Date(end);
@@ -231,11 +206,7 @@
       rateInput.min = "0";
       rateInput.step = "0.01";
 
-      const yyyy = d.getFullYear();
-      const mm = String(d.getMonth() + 1).padStart(2, "0");
-      const dd = String(d.getDate()).padStart(2, "0");
-      const isoKey = `${yyyy}-${mm}-${dd}`;
-
+      const isoKey = d.toISOString().slice(0,10);
       const saved = storedEntries[isoKey];
 
       if (saved) {
@@ -247,12 +218,12 @@
         rateInput.value = defaultRate.toString();
       }
 
-      // 🔒 lock if bill fully paid
+      // 🔒 disable only when payment started
       if (isLockedDate(isoKey)) {
         kgInput.disabled = true;
         rateInput.disabled = true;
-        kgInput.title = "Locked (bill fully paid)";
-        rateInput.title = "Locked (bill fully paid)";
+        kgInput.title = "Locked (payment started)";
+        rateInput.title = "Locked (payment started)";
       }
 
       wrap.appendChild(kgInput);
@@ -286,14 +257,100 @@
       d.setDate(d.getDate() + 1);
     }
 
-    summaryRange.textContent =
-      formatDateDisplay(start) + " to " + formatDateDisplay(end);
-
+    summaryRange.textContent = formatDateDisplay(start) + " to " + formatDateDisplay(end);
     setDaysLabel(start, end);
 
     summaryCard.style.display = "flex";
     downloadImgBtn.disabled = false;
     updateGrandTotal();
+  }
+
+  function ddmmyyyyToIso(dateText) {
+    const parts = String(dateText).split("-");
+    if (parts.length !== 3) return null;
+    const [dd, mm, yyyy] = parts;
+    return `${yyyy}-${mm.padStart(2,"0")}-${dd.padStart(2,"0")}`;
+  }
+
+  function syncReportEditsToDailyEntries() {
+    const stored = getStoredEntries();
+    const t = todayIso();
+
+    entriesBody.querySelectorAll("tr").forEach(tr => {
+      const isoKey = ddmmyyyyToIso(tr.children[2].textContent.trim());
+      if (!isoKey) return;
+
+      // ⛔ never save future
+      if (isoKey > t) return;
+
+      // 🔒 never save if locked (payment started)
+      if (isLockedDate(isoKey)) return;
+
+      const kgInput = tr.querySelector("input[placeholder='kg']");
+      const rateInput = tr.querySelector("input[placeholder='rate']");
+      const kg = kgInput ? parseFloat(kgInput.value) : NaN;
+      const rate = rateInput ? parseFloat(rateInput.value) : NaN;
+
+      const valid = !isNaN(kg) && !isNaN(rate) && kg > 0 && rate > 0;
+      if (valid) stored[isoKey] = { kg, rate };
+      else if (stored[isoKey]) delete stored[isoKey];
+    });
+
+    localStorage.setItem(ENTRIES_KEY, JSON.stringify(stored));
+  }
+
+  function recomputeBillTotal(bill, entries) {
+    let sum = 0;
+    for (let d = new Date(bill.from); d <= new Date(bill.to); d.setDate(d.getDate()+1)) {
+      const iso = d.toISOString().slice(0,10);
+      const e = entries[iso];
+      if (e && typeof e.kg !== "undefined" && typeof e.rate !== "undefined") {
+        const kg = parseFloat(e.kg);
+        const rate = parseFloat(e.rate);
+        if (!isNaN(kg) && !isNaN(rate)) sum += kg * rate;
+      }
+    }
+    return sum;
+  }
+
+  function upsertBillForCurrentRange() {
+    const fromVal = fromDateInput.value;
+    const toVal = toDateInput.value;
+    if (!fromVal || !toVal) return;
+
+    const bills = getBills();
+    const entries = getStoredEntries();
+
+    // find bill for exact range
+    const idx = bills.findIndex(b => b.from === fromVal && b.to === toVal);
+    const total = recomputeBillTotal({ from: fromVal, to: toVal }, entries);
+
+    if (idx === -1) {
+      if (total <= 0) return;
+
+      bills.push({
+        id: "BILL-" + Date.now(),
+        from: fromVal,
+        to: toVal,
+        total,
+        paid: 0,
+        status: "pending",
+        createdAt: new Date().toISOString()
+      });
+      setBills(bills);
+      return;
+    }
+
+    // bill exists: if payment started, do NOT change total
+    const bill = bills[idx];
+    const stage = statusFromAmounts(bill);
+    if (stage === "loading" || stage === "success") return;
+
+    // pending => update total
+    bill.total = total;
+    bill.status = statusFromAmounts(bill);
+    bills[idx] = bill;
+    setBills(bills);
   }
 
   function buildExportCard() {
@@ -326,80 +383,18 @@
     return clone;
   }
 
-  function syncReportEditsToDailyEntries() {
-    const stored = getStoredEntries();
-
-    entriesBody.querySelectorAll("tr").forEach(tr => {
-      const dateText = tr.children[2].textContent.trim(); // DD-MM-YYYY
-      const isoKey = ddmmyyyyToIso(dateText);
-      if (!isoKey) return;
-
-      // 🔒 do not change locked dates
-      if (isLockedDate(isoKey)) return;
-
-      const kgInput = tr.querySelector("input[placeholder='kg']");
-      const rateInput = tr.querySelector("input[placeholder='rate']");
-      const kg = kgInput ? parseFloat(kgInput.value) : NaN;
-      const rate = rateInput ? parseFloat(rateInput.value) : NaN;
-
-      const valid = !isNaN(kg) && !isNaN(rate) && kg > 0 && rate > 0;
-
-      if (valid) {
-        stored[isoKey] = { kg, rate };
-      } else {
-        // if user cleared values -> remove entry
-        if (stored[isoKey]) delete stored[isoKey];
-      }
-    });
-
-    localStorage.setItem(ENTRIES_KEY, JSON.stringify(stored));
-  }
-
-  function createBillForCurrentRange() {
-    if (!lastRangeStart || !lastRangeEnd) return;
-    if (!entriesBody.querySelector("tr")) return;
-
-    let total = 0;
-    entriesBody.querySelectorAll("tr").forEach(tr => {
-      const val = parseFloat(tr.children[0].textContent.replace(/,/g, ""));
-      if (!isNaN(val)) total += val;
-    });
-
-    if (total <= 0) return;
-
-    const fromVal = fromDateInput.value;
-    const toVal = toDateInput.value;
-    if (!fromVal || !toVal) return;
-
-    const bills = getBills();
-
-    const id = "BILL-" + Date.now();
-    const bill = {
-      id,
-      from: fromVal,
-      to: toVal,
-      total,
-      paid: 0,
-      status: "pending",
-      createdAt: new Date().toISOString()
-    };
-
-    bills.push(bill);
-    setBills(bills);
-  }
-
   async function downloadImage() {
     if (summaryCard.style.display === "none") return;
 
-    // ✅ sync edits to daily entries (but skips locked dates)
+    // 1) sync editable rows -> daily entries
     syncReportEditsToDailyEntries();
 
-    const exportCard = buildExportCard();
+    // 2) create or update bill total for range (only if pending)
+    upsertBillForCurrentRange();
 
-    const canvas = await html2canvas(exportCard, {
-      scale: 3,
-      backgroundColor: "#ffffff"
-    });
+    // 3) render image
+    const exportCard = buildExportCard();
+    const canvas = await html2canvas(exportCard, { scale: 3, backgroundColor: "#ffffff" });
 
     const link = document.createElement("a");
     link.download = "report-card.png";
@@ -407,13 +402,12 @@
     link.click();
 
     document.body.removeChild(exportCard);
-
-    // create bill after generating image
-    createBillForCurrentRange();
   }
 
   generateRowsBtn.addEventListener("click", createRows);
   downloadImgBtn.addEventListener("click", downloadImage);
+
+  applyDateLimits();
 </script>
 </body>
 </html>
