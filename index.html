@@ -5,12 +5,10 @@
   <title>ACS Calculator - REPORT Card</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
 
-  <!-- Shared + Page CSS -->
   <link rel="stylesheet" href="base.css">
   <link rel="stylesheet" href="index.css">
 </head>
 <body>
-
 <div class="wrapper">
   <h1>ACS Calculator</h1>
 
@@ -19,12 +17,10 @@
       <label>From date</label>
       <input type="date" id="fromDate">
     </div>
-
     <div class="field">
       <label>To date</label>
       <input type="date" id="toDate">
     </div>
-
     <div class="field">
       <label>Default rate (₹ / kg) (optional)</label>
       <input type="number" id="defaultRate" step="0.01" min="0" placeholder="e.g. 230">
@@ -42,7 +38,6 @@
     </div>
   </div>
 
-  <!-- REPORT CARD -->
   <div id="summaryCard">
     <div class="card-header">
       <h2 style="color:#D4AF37">ASHRAFI CHICKEN SHOP</h2>
@@ -81,198 +76,344 @@
   </div>
 </div>
 
-<!-- html2canvas -->
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
-
 <script>
-/* ========= STORAGE KEYS ========= */
-const ENTRIES_KEY = "acsEntries";
-const BILLS_KEY = "acsBills";
+  const fromDateInput = document.getElementById("fromDate");
+  const toDateInput = document.getElementById("toDate");
+  const defaultRateInput = document.getElementById("defaultRate");
+  const generateRowsBtn = document.getElementById("generateRowsBtn");
+  const downloadImgBtn = document.getElementById("downloadImgBtn");
+  const summaryCard = document.getElementById("summaryCard");
+  const entriesBody = document.getElementById("entriesBody");
+  const grandTotalCell = document.getElementById("grandTotalCell");
+  const summaryRange = document.getElementById("summaryRange");
+  const daysLabel = document.getElementById("daysLabel");
 
-/* ========= DOM ========= */
-const fromDateInput = document.getElementById("fromDate");
-const toDateInput = document.getElementById("toDate");
-const defaultRateInput = document.getElementById("defaultRate");
-const generateRowsBtn = document.getElementById("generateRowsBtn");
-const downloadImgBtn = document.getElementById("downloadImgBtn");
-const summaryCard = document.getElementById("summaryCard");
-const entriesBody = document.getElementById("entriesBody");
-const grandTotalCell = document.getElementById("grandTotalCell");
-const summaryRange = document.getElementById("summaryRange");
-const daysLabel = document.getElementById("daysLabel");
+  const ENTRIES_KEY = "acsEntries";
+  const BILLS_KEY = "acsBills";
 
-let lastRangeStart = null;
-let lastRangeEnd = null;
+  let lastRangeStart = null;
+  let lastRangeEnd = null;
 
-/* ========= HELPERS ========= */
-function getStoredEntries() {
-  try {
-    return JSON.parse(localStorage.getItem(ENTRIES_KEY)) || {};
-  } catch {
-    return {};
-  }
-}
-
-function getBills() {
-  try {
-    return JSON.parse(localStorage.getItem(BILLS_KEY)) || [];
-  } catch {
-    return [];
-  }
-}
-
-function setBills(bills) {
-  localStorage.setItem(BILLS_KEY, JSON.stringify(bills));
-}
-
-function formatDateDisplay(d) {
-  return d.toLocaleDateString("en-GB", {
-    day: "2-digit",
-    month: "long",
-    year: "numeric"
-  });
-}
-
-function formatDateShort(d) {
-  return `${String(d.getDate()).padStart(2,"0")}-${String(d.getMonth()+1).padStart(2,"0")}-${d.getFullYear()}`;
-}
-
-function setDaysLabel(start, end) {
-  const days = Math.round((end - start) / 86400000) + 1;
-  daysLabel.textContent = days > 0 ? `कुल ${days} दिन का हिसाब` : "";
-}
-
-/* ========= CREATE ROWS ========= */
-function createRows() {
-  const fromVal = fromDateInput.value;
-  const toVal = toDateInput.value;
-  if (!fromVal || !toVal) return alert("Select both dates");
-
-  const start = new Date(fromVal);
-  const end = new Date(toVal);
-  if (start > end) return alert("Invalid date range");
-
-  lastRangeStart = new Date(start);
-  lastRangeEnd = new Date(end);
-
-  const entries = getStoredEntries();
-  const defaultRate = parseFloat(defaultRateInput.value);
-  const useDefaultRate = !isNaN(defaultRate);
-
-  entriesBody.innerHTML = "";
-  let d = new Date(start);
-
-  while (d <= end) {
-    const iso = d.toISOString().slice(0,10);
-    const saved = entries[iso];
-
-    const tr = document.createElement("tr");
-    const totalTd = document.createElement("td");
-    const calcTd = document.createElement("td");
-    const dateTd = document.createElement("td");
-
-    totalTd.textContent = "0";
-    dateTd.textContent = formatDateShort(d);
-
-    const wrap = document.createElement("div");
-    wrap.className = "inputs-wrapper";
-
-    const kgInput = document.createElement("input");
-    kgInput.placeholder = "kg";
-
-    const rateInput = document.createElement("input");
-    rateInput.placeholder = "rate";
-
-    if (saved) {
-      kgInput.value = saved.kg;
-      rateInput.value = saved.rate;
-      totalTd.textContent = (saved.kg * saved.rate).toFixed(0);
-    } else if (useDefaultRate) {
-      rateInput.value = defaultRate;
+  function getStoredEntries() {
+    try {
+      const raw = localStorage.getItem(ENTRIES_KEY);
+      return raw ? JSON.parse(raw) : {};
+    } catch (e) {
+      console.error("Failed to parse entries", e);
+      return {};
     }
-
-    function recalc() {
-      const kg = parseFloat(kgInput.value);
-      const rate = parseFloat(rateInput.value);
-      const total = (!isNaN(kg) && !isNaN(rate)) ? kg * rate : 0;
-      totalTd.textContent = total === 0 ? "0" : total.toFixed(0);
-      updateGrandTotal();
-    }
-
-    kgInput.addEventListener("input", recalc);
-    rateInput.addEventListener("input", recalc);
-
-    wrap.append(kgInput, document.createTextNode(" × "), rateInput);
-    calcTd.appendChild(wrap);
-    tr.append(totalTd, calcTd, dateTd);
-    entriesBody.appendChild(tr);
-
-    d.setDate(d.getDate() + 1);
   }
 
-  summaryRange.textContent =
-    formatDateDisplay(start) + " to " + formatDateDisplay(end);
-
-  setDaysLabel(start, end);
-  summaryCard.style.display = "flex";
-  downloadImgBtn.disabled = false;
-  updateGrandTotal();
-}
-
-function updateGrandTotal() {
-  let sum = 0;
-  entriesBody.querySelectorAll("tr").forEach(tr => {
-    const val = parseFloat(tr.children[0].textContent);
-    if (!isNaN(val)) sum += val;
-  });
-  grandTotalCell.textContent = sum.toLocaleString("en-IN");
-}
-
-/* ========= EXPORT ========= */
-function syncToDailyEntries() {
-  const entries = getStoredEntries();
-  entriesBody.querySelectorAll("tr").forEach(tr => {
-    const dateText = tr.children[2].textContent;
-    const [dd,mm,yyyy] = dateText.split("-");
-    const iso = `${yyyy}-${mm}-${dd}`;
-    const kg = parseFloat(tr.querySelector("input[placeholder='kg']").value);
-    const rate = parseFloat(tr.querySelector("input[placeholder='rate']").value);
-    if (!isNaN(kg) && !isNaN(rate)) {
-      entries[iso] = { kg, rate };
+  function getBills() {
+    try {
+      const raw = localStorage.getItem(BILLS_KEY);
+      return raw ? JSON.parse(raw) : [];
+    } catch (e) {
+      console.error("Failed to parse bills", e);
+      return [];
     }
-  });
-  localStorage.setItem(ENTRIES_KEY, JSON.stringify(entries));
-}
+  }
 
-function createBill() {
-  const total = parseFloat(grandTotalCell.textContent.replace(/,/g,""));
-  if (!total) return;
-  const bills = getBills();
-  bills.push({
-    id: "BILL-" + Date.now(),
-    from: fromDateInput.value,
-    to: toDateInput.value,
-    total,
-    paid: 0,
-    status: "pending",
-    createdAt: new Date().toISOString()
-  });
-  setBills(bills);
-}
+  function setBills(bills) {
+    localStorage.setItem(BILLS_KEY, JSON.stringify(bills));
+  }
 
-async function downloadImage() {
-  syncToDailyEntries();
-  const canvas = await html2canvas(summaryCard, { scale: 3 });
-  const a = document.createElement("a");
-  a.download = "report-card.png";
-  a.href = canvas.toDataURL();
-  a.click();
-  createBill();
-}
+  function statusFromAmounts(bill) {
+    const total = bill.total || 0;
+    const paid  = bill.paid  || 0;
+    if (total <= 0) return "pending";
+    if (paid <= 0) return "pending";
+    if (paid < total) return "loading";
+    return "success";
+  }
 
-generateRowsBtn.onclick = createRows;
-downloadImgBtn.onclick = downloadImage;
+  function statusForDate(dateIso) {
+    const bills = getBills();
+    const order = { pending: 1, loading: 2, success: 3 };
+    let best = null;
+
+    bills.forEach(bill => {
+      if (!bill.from || !bill.to) return;
+      if (bill.from <= dateIso && dateIso <= bill.to) {
+        const s = statusFromAmounts(bill);
+        if (!best || order[s] > order[best]) best = s;
+      }
+    });
+
+    return best;
+  }
+
+  function isLockedDate(dateIso) {
+    return statusForDate(dateIso) === "success";
+  }
+
+  function formatDateDisplay(d) {
+    const opts = { day: "2-digit", month: "long", year: "numeric" };
+    return d.toLocaleDateString("en-GB", opts);
+  }
+
+  function formatDateShort(d) {
+    const dd = String(d.getDate()).padStart(2, "0");
+    const mm = String(d.getMonth() + 1).padStart(2, "0");
+    const yyyy = d.getFullYear();
+    return `${dd}-${mm}-${yyyy}`;
+  }
+
+  function setDaysLabel(start, end) {
+    const msPerDay = 24 * 60 * 60 * 1000;
+    const diff = Math.round((end - start) / msPerDay) + 1;
+    daysLabel.textContent = diff > 0 ? `કુલ ${diff} દિવસનું હિસાબ` : "";
+  }
+
+  function ddmmyyyyToIso(dateText) {
+    const parts = String(dateText).split("-");
+    if (parts.length !== 3) return null;
+    const [dd, mm, yyyy] = parts;
+    return `${yyyy}-${mm.padStart(2,"0")}-${dd.padStart(2,"0")}`;
+  }
+
+  function updateGrandTotal() {
+    let sum = 0;
+    entriesBody.querySelectorAll("tr").forEach(tr => {
+      const val = parseFloat(tr.children[0].textContent.replace(/,/g, ""));
+      if (!isNaN(val)) sum += val;
+    });
+    grandTotalCell.textContent = sum === 0 ? "0" : sum.toLocaleString("en-IN");
+  }
+
+  function createRows() {
+    const fromVal = fromDateInput.value;
+    const toVal = toDateInput.value;
+
+    if (!fromVal || !toVal) {
+      alert("Please select both from and to dates.");
+      return;
+    }
+
+    const start = new Date(fromVal);
+    const end = new Date(toVal);
+
+    if (start > end) {
+      alert("From date cannot be after To date.");
+      return;
+    }
+
+    lastRangeStart = new Date(start);
+    lastRangeEnd = new Date(end);
+
+    const storedEntries = getStoredEntries();
+    entriesBody.innerHTML = "";
+
+    let d = new Date(start);
+    const defaultRate = parseFloat(defaultRateInput.value);
+    const useDefaultRate = !isNaN(defaultRate);
+
+    while (d <= end) {
+      const tr = document.createElement("tr");
+
+      const totalTd = document.createElement("td");
+      totalTd.textContent = "0";
+
+      const calcTd = document.createElement("td");
+      const wrap = document.createElement("div");
+      wrap.className = "inputs-wrapper";
+
+      const kgInput = document.createElement("input");
+      kgInput.type = "number";
+      kgInput.placeholder = "kg";
+      kgInput.min = "0";
+      kgInput.step = "0.01";
+
+      const rateInput = document.createElement("input");
+      rateInput.type = "number";
+      rateInput.placeholder = "rate";
+      rateInput.min = "0";
+      rateInput.step = "0.01";
+
+      const yyyy = d.getFullYear();
+      const mm = String(d.getMonth() + 1).padStart(2, "0");
+      const dd = String(d.getDate()).padStart(2, "0");
+      const isoKey = `${yyyy}-${mm}-${dd}`;
+
+      const saved = storedEntries[isoKey];
+
+      if (saved) {
+        kgInput.value = saved.kg;
+        rateInput.value = saved.rate;
+        const rowTotal = saved.kg * saved.rate;
+        totalTd.textContent = rowTotal === 0 ? "0" : rowTotal.toFixed(0);
+      } else if (useDefaultRate) {
+        rateInput.value = defaultRate.toString();
+      }
+
+      // 🔒 lock if bill fully paid
+      if (isLockedDate(isoKey)) {
+        kgInput.disabled = true;
+        rateInput.disabled = true;
+        kgInput.title = "Locked (bill fully paid)";
+        rateInput.title = "Locked (bill fully paid)";
+      }
+
+      wrap.appendChild(kgInput);
+      const multSpan = document.createElement("span");
+      multSpan.textContent = "×";
+      multSpan.style.alignSelf = "center";
+      wrap.appendChild(multSpan);
+      wrap.appendChild(rateInput);
+      calcTd.appendChild(wrap);
+
+      const dateTd = document.createElement("td");
+      dateTd.textContent = formatDateShort(d);
+
+      tr.appendChild(totalTd);
+      tr.appendChild(calcTd);
+      tr.appendChild(dateTd);
+      entriesBody.appendChild(tr);
+
+      function recalc() {
+        const kg = parseFloat(kgInput.value);
+        const rate = parseFloat(rateInput.value);
+        let rowTotal = 0;
+        if (!isNaN(kg) && !isNaN(rate)) rowTotal = kg * rate;
+        totalTd.textContent = rowTotal === 0 ? "0" : rowTotal.toFixed(0);
+        updateGrandTotal();
+      }
+
+      kgInput.addEventListener("input", recalc);
+      rateInput.addEventListener("input", recalc);
+
+      d.setDate(d.getDate() + 1);
+    }
+
+    summaryRange.textContent =
+      formatDateDisplay(start) + " to " + formatDateDisplay(end);
+
+    setDaysLabel(start, end);
+
+    summaryCard.style.display = "flex";
+    downloadImgBtn.disabled = false;
+    updateGrandTotal();
+  }
+
+  function buildExportCard() {
+    const clone = summaryCard.cloneNode(true);
+    clone.id = "summaryCardExport";
+    clone.classList.add("export-card");
+
+    const cloneBody = clone.querySelector("tbody");
+    const cloneRows = cloneBody.querySelectorAll("tr");
+    const originalRows = entriesBody.querySelectorAll("tr");
+
+    cloneRows.forEach((row, idx) => {
+      const origRow = originalRows[idx];
+      if (!origRow) return;
+
+      const total = origRow.children[0].textContent;
+      const dateText = origRow.children[2].textContent;
+
+      const kgInput = origRow.querySelector("input[placeholder='kg']");
+      const rateInput = origRow.querySelector("input[placeholder='rate']");
+      const kg = kgInput && kgInput.value ? kgInput.value : "0";
+      const rate = rateInput && rateInput.value ? rateInput.value : "0";
+
+      row.children[0].textContent = total;
+      row.children[1].textContent = `${kg} × ${rate}`;
+      row.children[2].textContent = dateText;
+    });
+
+    document.body.appendChild(clone);
+    return clone;
+  }
+
+  function syncReportEditsToDailyEntries() {
+    const stored = getStoredEntries();
+
+    entriesBody.querySelectorAll("tr").forEach(tr => {
+      const dateText = tr.children[2].textContent.trim(); // DD-MM-YYYY
+      const isoKey = ddmmyyyyToIso(dateText);
+      if (!isoKey) return;
+
+      // 🔒 do not change locked dates
+      if (isLockedDate(isoKey)) return;
+
+      const kgInput = tr.querySelector("input[placeholder='kg']");
+      const rateInput = tr.querySelector("input[placeholder='rate']");
+      const kg = kgInput ? parseFloat(kgInput.value) : NaN;
+      const rate = rateInput ? parseFloat(rateInput.value) : NaN;
+
+      const valid = !isNaN(kg) && !isNaN(rate) && kg > 0 && rate > 0;
+
+      if (valid) {
+        stored[isoKey] = { kg, rate };
+      } else {
+        // if user cleared values -> remove entry
+        if (stored[isoKey]) delete stored[isoKey];
+      }
+    });
+
+    localStorage.setItem(ENTRIES_KEY, JSON.stringify(stored));
+  }
+
+  function createBillForCurrentRange() {
+    if (!lastRangeStart || !lastRangeEnd) return;
+    if (!entriesBody.querySelector("tr")) return;
+
+    let total = 0;
+    entriesBody.querySelectorAll("tr").forEach(tr => {
+      const val = parseFloat(tr.children[0].textContent.replace(/,/g, ""));
+      if (!isNaN(val)) total += val;
+    });
+
+    if (total <= 0) return;
+
+    const fromVal = fromDateInput.value;
+    const toVal = toDateInput.value;
+    if (!fromVal || !toVal) return;
+
+    const bills = getBills();
+
+    const id = "BILL-" + Date.now();
+    const bill = {
+      id,
+      from: fromVal,
+      to: toVal,
+      total,
+      paid: 0,
+      status: "pending",
+      createdAt: new Date().toISOString()
+    };
+
+    bills.push(bill);
+    setBills(bills);
+  }
+
+  async function downloadImage() {
+    if (summaryCard.style.display === "none") return;
+
+    // ✅ sync edits to daily entries (but skips locked dates)
+    syncReportEditsToDailyEntries();
+
+    const exportCard = buildExportCard();
+
+    const canvas = await html2canvas(exportCard, {
+      scale: 3,
+      backgroundColor: "#ffffff"
+    });
+
+    const link = document.createElement("a");
+    link.download = "report-card.png";
+    link.href = canvas.toDataURL("image/png");
+    link.click();
+
+    document.body.removeChild(exportCard);
+
+    // create bill after generating image
+    createBillForCurrentRange();
+  }
+
+  generateRowsBtn.addEventListener("click", createRows);
+  downloadImgBtn.addEventListener("click", downloadImage);
 </script>
-
 </body>
 </html>
