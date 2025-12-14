@@ -106,10 +106,10 @@
     </div>
   </div>
 
-  <!-- Firebase init (your Step 3 file) -->
-  <script src="firebase.js"></script>
+  
 
   <script type="module">
+    import { auth } from "./firebase.js";
     import {
       onAuthStateChanged,
       signInWithEmailAndPassword,
