@@ -1,18 +1,19 @@
 {
   "name": "ACS Calculator",
   "short_name": "ACS",
-  "start_url": "./index.html",
+  "start_url": "/ACS_Calculator/index.html",
+  "scope": "/ACS_Calculator/",
   "display": "standalone",
   "background_color": "#1f2937",
   "theme_color": "#1f2937",
   "icons": [
     {
-      "src": "/android-chrome-192x192.png",
+      "src": "/ACS_Calculator/android-chrome-192x192.png",
       "sizes": "192x192",
       "type": "image/png"
     },
     {
-      "src": "/android-chrome-512x512.png",
+      "src": "/ACS_Calculator/android-chrome-512x512.png",
       "sizes": "512x512",
       "type": "image/png"
     }
