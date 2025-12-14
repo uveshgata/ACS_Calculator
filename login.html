@@ -69,7 +69,8 @@
       margin-top:10px;
       font-size:13px;
       text-align:center;
-      font-weight:700;
+      font-weight:800;
+      word-break:break-word;
     }
     .msg.ok{ color:#047857; }
     .msg.err{ color:#b91c1c; }
@@ -102,21 +103,32 @@
       <button class="btn secondary" id="signupBtn">Create Admin Account</button>
 
       <div id="msg" class="msg"></div>
-      <div class="hint">Use Email/Password (no email-link login).</div>
+      <div class="hint">Email/Password only (no email-link).</div>
     </div>
   </div>
 
-  
-
   <script type="module">
-    import { auth } from "./firebase.js";
+    // ✅ Firebase imports (direct CDN)
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-app.js";
     import {
+      getAuth,
       onAuthStateChanged,
       signInWithEmailAndPassword,
       createUserWithEmailAndPassword
     } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-auth.js";
 
-    const auth = window.firebaseAuth;
+    // ✅ Your Firebase config
+    const firebaseConfig = {
+      apiKey: "AIzaSyBQMidBylxAZGuQvBmhyAoI2uYLIma9CNU",
+      authDomain: "acs-calculator-a4f89.firebaseapp.com",
+      projectId: "acs-calculator-a4f89",
+      storageBucket: "acs-calculator-a4f89.firebasestorage.app",
+      messagingSenderId: "546157095238",
+      appId: "1:546157095238:web:17d8c408126cd4ed759d47"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
 
     const emailEl = document.getElementById("email");
     const passEl  = document.getElementById("password");
@@ -129,21 +141,18 @@
       msgEl.className = "msg " + (type || "");
     }
 
-    // If already logged in, go to customers selection
+    // quick proof JS is running
+    showMsg("Ready ✅", "ok");
+
     onAuthStateChanged(auth, (user) => {
-      if (user) {
-        window.location.href = "customers.html";
-      }
+      if (user) window.location.href = "customers.html";
     });
 
     loginBtn.addEventListener("click", async () => {
       const email = emailEl.value.trim();
       const password = passEl.value;
 
-      if (!email || !password) {
-        showMsg("Enter email and password.", "err");
-        return;
-      }
+      if (!email || !password) return showMsg("Enter email and password.", "err");
 
       loginBtn.disabled = true;
       signupBtn.disabled = true;
@@ -166,14 +175,8 @@
       const email = emailEl.value.trim();
       const password = passEl.value;
 
-      if (!email || !password) {
-        showMsg("Enter email and password to create account.", "err");
-        return;
-      }
-      if (password.length < 6) {
-        showMsg("Password must be at least 6 characters.", "err");
-        return;
-      }
+      if (!email || !password) return showMsg("Enter email and password to create account.", "err");
+      if (password.length < 6) return showMsg("Password must be at least 6 characters.", "err");
 
       loginBtn.disabled = true;
       signupBtn.disabled = true;
