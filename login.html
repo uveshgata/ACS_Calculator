@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>ACS Calculator - Admin Login</title>
+
+  <link rel="stylesheet" href="base.css">
+
+  <style>
+    .login-card{
+      background:#ffffff;
+      border:1px solid #e5e7eb;
+      border-radius:18px;
+      padding:16px;
+      box-shadow: 0 10px 24px rgba(0,0,0,0.08);
+      margin-top:14px;
+    }
+    .login-title{
+      font-size:18px;
+      font-weight:900;
+      color:#111827;
+      margin:0 0 10px;
+      text-align:center;
+    }
+    .field{ margin-bottom:10px; }
+    .field label{
+      display:block;
+      font-size:13px;
+      font-weight:700;
+      color:#374151;
+      margin-bottom:6px;
+    }
+    .field input{
+      width:100%;
+      padding:10px 12px;
+      border-radius:12px;
+      border:1px solid #d1d5db;
+      font-size:14px;
+      outline:none;
+      transition:.15s;
+      background:#fff;
+    }
+    .field input:focus{
+      border-color:#6366f1;
+      box-shadow:0 0 0 3px rgba(99,102,241,.25);
+    }
+    .btn{
+      width:100%;
+      border:none;
+      border-radius:999px;
+      padding:11px 14px;
+      font-size:14px;
+      font-weight:800;
+      cursor:pointer;
+      transition:.15s;
+    }
+    .btn.primary{
+      background: linear-gradient(135deg, #4f46e5, #7c3aed);
+      color:#fff;
+      box-shadow: 0 10px 22px rgba(88,80,236,0.35);
+    }
+    .btn.secondary{
+      margin-top:8px;
+      background:#e5e7eb;
+      color:#111827;
+    }
+    .msg{
+      margin-top:10px;
+      font-size:13px;
+      text-align:center;
+      font-weight:700;
+    }
+    .msg.ok{ color:#047857; }
+    .msg.err{ color:#b91c1c; }
+    .hint{
+      margin-top:8px;
+      font-size:12px;
+      color:#6b7280;
+      text-align:center;
+    }
+  </style>
+</head>
+<body>
+  <div class="wrapper">
+    <h1>ACS Calculator</h1>
+
+    <div class="login-card">
+      <div class="login-title">Admin Login</div>
+
+      <div class="field">
+        <label>Email</label>
+        <input id="email" type="email" placeholder="you@example.com" autocomplete="email">
+      </div>
+
+      <div class="field">
+        <label>Password</label>
+        <input id="password" type="password" placeholder="••••••••" autocomplete="current-password">
+      </div>
+
+      <button class="btn primary" id="loginBtn">Login</button>
+      <button class="btn secondary" id="signupBtn">Create Admin Account</button>
+
+      <div id="msg" class="msg"></div>
+      <div class="hint">Use Email/Password (no email-link login).</div>
+    </div>
+  </div>
+
+  <!-- Firebase init (your Step 3 file) -->
+  <script src="firebase.js"></script>
+
+  <script type="module">
+    import {
+      onAuthStateChanged,
+      signInWithEmailAndPassword,
+      createUserWithEmailAndPassword
+    } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-auth.js";
+
+    const auth = window.firebaseAuth;
+
+    const emailEl = document.getElementById("email");
+    const passEl  = document.getElementById("password");
+    const msgEl   = document.getElementById("msg");
+    const loginBtn= document.getElementById("loginBtn");
+    const signupBtn= document.getElementById("signupBtn");
+
+    function showMsg(text, type){
+      msgEl.textContent = text;
+      msgEl.className = "msg " + (type || "");
+    }
+
+    // If already logged in, go to customers selection
+    onAuthStateChanged(auth, (user) => {
+      if (user) {
+        window.location.href = "customers.html";
+      }
+    });
+
+    loginBtn.addEventListener("click", async () => {
+      const email = emailEl.value.trim();
+      const password = passEl.value;
+
+      if (!email || !password) {
+        showMsg("Enter email and password.", "err");
+        return;
+      }
+
+      loginBtn.disabled = true;
+      signupBtn.disabled = true;
+      showMsg("Logging in...", "");
+
+      try {
+        await signInWithEmailAndPassword(auth, email, password);
+        showMsg("Login successful. Redirecting...", "ok");
+        window.location.href = "customers.html";
+      } catch (e) {
+        console.error(e);
+        showMsg(e?.message || "Login failed.", "err");
+      } finally {
+        loginBtn.disabled = false;
+        signupBtn.disabled = false;
+      }
+    });
+
+    signupBtn.addEventListener("click", async () => {
+      const email = emailEl.value.trim();
+      const password = passEl.value;
+
+      if (!email || !password) {
+        showMsg("Enter email and password to create account.", "err");
+        return;
+      }
+      if (password.length < 6) {
+        showMsg("Password must be at least 6 characters.", "err");
+        return;
+      }
+
+      loginBtn.disabled = true;
+      signupBtn.disabled = true;
+      showMsg("Creating account...", "");
+
+      try {
+        await createUserWithEmailAndPassword(auth, email, password);
+        showMsg("Account created. Redirecting...", "ok");
+        window.location.href = "customers.html";
+      } catch (e) {
+        console.error(e);
+        showMsg(e?.message || "Signup failed.", "err");
+      } finally {
+        loginBtn.disabled = false;
+        signupBtn.disabled = false;
+      }
+    });
+  </script>
+</body>
+</html>
