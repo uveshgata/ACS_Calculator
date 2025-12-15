@@ -4,33 +4,56 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>ACS Calculator - Admin Login</title>
-  <link rel="icon" href="/ACS_Calculator/favicon.ico" type="image/x-icon">
-<link rel="icon" type="image/png" sizes="32x32" href="/ACS_Calculator/favicon-32x32.png">
-<link rel="icon" type="image/png" sizes="16x16" href="/ACS_Calculator/favicon-16x16.png">
-<link rel="apple-touch-icon" sizes="180x180" href="/ACS_Calculator/apple-touch-icon.png">
+
+  <!-- ✅ Favicons / PWA -->
+  <link rel="icon" href="favicon.ico">
+  <link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#111827">
+
   <link rel="stylesheet" href="base.css">
 
   <style>
+    body{
+      margin:0;
+      padding:16px;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: radial-gradient(circle at top, #eef2ff, #e5e7eb);
+      display:flex;
+      justify-content:center;
+    }
+    .wrapper{ width:100%; max-width:520px; }
+    h1{
+      text-align:center;
+      margin:0 0 12px;
+      font-size:22px;
+      font-weight:900;
+      color:#111827;
+    }
+
     .login-card{
       background:#ffffff;
       border:1px solid #e5e7eb;
       border-radius:18px;
       padding:16px;
       box-shadow: 0 10px 24px rgba(0,0,0,0.08);
-      margin-top:14px;
+      margin-top:10px;
     }
     .login-title{
-      font-size:18px;
+      font-size:16px;
       font-weight:900;
       color:#111827;
-      margin:0 0 10px;
+      margin:0 0 12px;
       text-align:center;
     }
+
     .field{ margin-bottom:10px; }
     .field label{
       display:block;
       font-size:13px;
-      font-weight:700;
+      font-weight:800;
       color:#374151;
       margin-bottom:6px;
     }
@@ -48,13 +71,14 @@
       border-color:#6366f1;
       box-shadow:0 0 0 3px rgba(99,102,241,.25);
     }
+
     .btn{
       width:100%;
       border:none;
       border-radius:999px;
       padding:11px 14px;
       font-size:14px;
-      font-weight:800;
+      font-weight:900;
       cursor:pointer;
       transition:.15s;
     }
@@ -67,24 +91,34 @@
       margin-top:8px;
       background:#e5e7eb;
       color:#111827;
+      font-weight:800;
     }
+    .btn:disabled{
+      opacity:.55;
+      cursor:not-allowed;
+      box-shadow:none;
+    }
+
     .msg{
       margin-top:10px;
       font-size:13px;
       text-align:center;
-      font-weight:800;
+      font-weight:900;
       word-break:break-word;
     }
     .msg.ok{ color:#047857; }
     .msg.err{ color:#b91c1c; }
+
     .hint{
-      margin-top:8px;
+      margin-top:10px;
       font-size:12px;
       color:#6b7280;
       text-align:center;
+      line-height:1.4;
     }
   </style>
 </head>
+
 <body>
   <div class="wrapper">
     <h1>ACS Calculator</h1>
@@ -106,12 +140,15 @@
       <button class="btn secondary" id="signupBtn">Create Admin Account</button>
 
       <div id="msg" class="msg"></div>
-      <div class="hint">Single-device login enabled (new login can kick old device).</div>
+      <div class="hint">
+        Single-device login enabled.<br>
+        If you login on a new device, it can logout the old one (with confirmation).
+      </div>
     </div>
   </div>
 
   <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-app.js";
+    import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-app.js";
     import {
       getAuth,
       onAuthStateChanged,
@@ -128,7 +165,7 @@
       serverTimestamp
     } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore.js";
 
-    // ✅ Firebase config
+    // ✅ Firebase config (your project)
     const firebaseConfig = {
       apiKey: "AIzaSyBQMidBylxAZGuQvBmhyAoI2uYLIma9CNU",
       authDomain: "acs-calculator-a4f89.firebaseapp.com",
@@ -138,7 +175,7 @@
       appId: "1:546157095238:web:17d8c408126cd4ed759d47"
     };
 
-    const app = initializeApp(firebaseConfig);
+    const app = getApps().length ? getApps()[0] : initializeApp(firebaseConfig);
     const auth = getAuth(app);
     const db = getFirestore(app);
 
@@ -148,15 +185,15 @@
     const emailEl = document.getElementById("email");
     const passEl  = document.getElementById("password");
     const msgEl   = document.getElementById("msg");
-    const loginBtn= document.getElementById("loginBtn");
-    const signupBtn= document.getElementById("signupBtn");
+    const loginBtn = document.getElementById("loginBtn");
+    const signupBtn = document.getElementById("signupBtn");
 
     function showMsg(text, type){
-      msgEl.textContent = text;
+      msgEl.textContent = text || "";
       msgEl.className = "msg " + (type || "");
     }
 
-    function genId() {
+    function genId(){
       return "id_" + Math.random().toString(36).slice(2) + "_" + Date.now().toString(36);
     }
 
@@ -174,12 +211,12 @@
       try { localStorage.setItem(SESSION_TOKEN_KEY, token); } catch {}
     }
 
-    // If already logged in, go forward (session-lock.js will enforce if another device took over)
+    // Already logged in? go to customers
     onAuthStateChanged(auth, (user) => {
       if (user) window.location.href = "customers.html";
     });
 
-    async function establishSingleDeviceSession(user) {
+    async function establishSingleDeviceSession(user){
       const uid = user.uid;
       const deviceId = getOrCreateDeviceId();
       const sessionRef = doc(db, "admins", uid, "meta", "session");
@@ -187,7 +224,7 @@
       const snap = await getDoc(sessionRef);
       const data = snap.exists() ? snap.data() : null;
 
-      // Another device already has a session?
+      // If another device is active, confirm kick
       if (data && data.deviceId && data.deviceId !== deviceId && data.token) {
         const ok = confirm(
           "This admin is already logged in on another device.\n\n" +
@@ -195,14 +232,13 @@
         );
 
         if (!ok) {
-          // Cancel login on this device
           await signOut(auth);
           showMsg("Login cancelled. Other device remains logged in.", "err");
           return false;
         }
       }
 
-      // Create/overwrite session (new device wins)
+      // New session token (this device becomes active)
       const newToken = genId();
       await setDoc(sessionRef, {
         token: newToken,
@@ -214,7 +250,7 @@
       return true;
     }
 
-    async function handleAfterAuth() {
+    async function afterAuth(){
       const user = auth.currentUser;
       if (!user) return;
 
@@ -228,6 +264,7 @@
     loginBtn.addEventListener("click", async () => {
       const email = emailEl.value.trim();
       const password = passEl.value;
+
       if (!email || !password) return showMsg("Enter email and password.", "err");
 
       loginBtn.disabled = true;
@@ -236,7 +273,7 @@
 
       try {
         await signInWithEmailAndPassword(auth, email, password);
-        await handleAfterAuth();
+        await afterAuth();
       } catch (e) {
         console.error(e);
         showMsg(e?.message || "Login failed.", "err");
@@ -249,6 +286,7 @@
     signupBtn.addEventListener("click", async () => {
       const email = emailEl.value.trim();
       const password = passEl.value;
+
       if (!email || !password) return showMsg("Enter email and password to create account.", "err");
       if (password.length < 6) return showMsg("Password must be at least 6 characters.", "err");
 
@@ -258,7 +296,7 @@
 
       try {
         await createUserWithEmailAndPassword(auth, email, password);
-        await handleAfterAuth();
+        await afterAuth();
       } catch (e) {
         console.error(e);
         showMsg(e?.message || "Signup failed.", "err");
