@@ -211,10 +211,20 @@
       try { localStorage.setItem(SESSION_TOKEN_KEY, token); } catch {}
     }
 
-    // Already logged in? go to customers
-    onAuthStateChanged(auth, (user) => {
-      if (user) window.location.href = "customers.html";
-    });
+    onAuthStateChanged(auth, async (user) => {
+  if (!user) return;
+
+  // If already logged in, still ensure session doc is created/updated
+  try {
+    const ok = await establishSingleDeviceSession(user);
+    if (ok) window.location.href = "customers.html";
+  } catch (e) {
+    console.error(e);
+    showMsg("Session setup failed. Please login again.", "err");
+    try { await signOut(auth); } catch {}
+  }
+});
+
 
     async function establishSingleDeviceSession(user){
       const uid = user.uid;
