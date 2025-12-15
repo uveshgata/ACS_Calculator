@@ -4,10 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>ACS Calculator - Admin Login</title>
-  <link rel="icon" href="/ACS_Calculator/favicon.ico" type="image/x-icon">
-  <link rel="icon" type="image/png" sizes="32x32" href="/ACS_Calculator/favicon-32x32.png">
-  <link rel="icon" type="image/png" sizes="16x16" href="/ACS_Calculator/favicon-16x16.png">
-  <link rel="apple-touch-icon" sizes="180x180" href="/ACS_Calculator/apple-touch-icon.png">
+
   <link rel="stylesheet" href="base.css">
 
   <style>
@@ -106,21 +103,29 @@
       <button class="btn secondary" id="signupBtn">Create Admin Account</button>
 
       <div id="msg" class="msg"></div>
-      <div class="hint">Email/Password only (no email-link).</div>
+      <div class="hint">Single-device login enabled (new login can kick old device).</div>
     </div>
   </div>
 
   <script type="module">
-    // ✅ Firebase imports (direct CDN)
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-app.js";
     import {
       getAuth,
       onAuthStateChanged,
       signInWithEmailAndPassword,
-      createUserWithEmailAndPassword
+      createUserWithEmailAndPassword,
+      signOut
     } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-auth.js";
 
-    // ✅ Your Firebase config
+    import {
+      getFirestore,
+      doc,
+      getDoc,
+      setDoc,
+      serverTimestamp
+    } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore.js";
+
+    // ✅ Firebase config
     const firebaseConfig = {
       apiKey: "AIzaSyBQMidBylxAZGuQvBmhyAoI2uYLIma9CNU",
       authDomain: "acs-calculator-a4f89.firebaseapp.com",
@@ -132,6 +137,10 @@
 
     const app = initializeApp(firebaseConfig);
     const auth = getAuth(app);
+    const db = getFirestore(app);
+
+    const DEVICE_ID_KEY = "acs:deviceId";
+    const SESSION_TOKEN_KEY = "acs:sessionToken";
 
     const emailEl = document.getElementById("email");
     const passEl  = document.getElementById("password");
@@ -144,17 +153,78 @@
       msgEl.className = "msg " + (type || "");
     }
 
-    // quick proof JS is running
-    showMsg("Ready ✅", "ok");
+    function genId() {
+      return "id_" + Math.random().toString(36).slice(2) + "_" + Date.now().toString(36);
+    }
 
+    function getOrCreateDeviceId(){
+      let id = "";
+      try { id = localStorage.getItem(DEVICE_ID_KEY) || ""; } catch {}
+      if (!id) {
+        id = genId();
+        try { localStorage.setItem(DEVICE_ID_KEY, id); } catch {}
+      }
+      return id;
+    }
+
+    function setLocalSessionToken(token){
+      try { localStorage.setItem(SESSION_TOKEN_KEY, token); } catch {}
+    }
+
+    // If already logged in, go forward (session-lock.js will enforce if another device took over)
     onAuthStateChanged(auth, (user) => {
       if (user) window.location.href = "customers.html";
     });
 
+    async function establishSingleDeviceSession(user) {
+      const uid = user.uid;
+      const deviceId = getOrCreateDeviceId();
+      const sessionRef = doc(db, "admins", uid, "meta", "session");
+
+      const snap = await getDoc(sessionRef);
+      const data = snap.exists() ? snap.data() : null;
+
+      // Another device already has a session?
+      if (data && data.deviceId && data.deviceId !== deviceId && data.token) {
+        const ok = confirm(
+          "This admin is already logged in on another device.\n\n" +
+          "Do you want to logout the other device and continue here?"
+        );
+
+        if (!ok) {
+          // Cancel login on this device
+          await signOut(auth);
+          showMsg("Login cancelled. Other device remains logged in.", "err");
+          return false;
+        }
+      }
+
+      // Create/overwrite session (new device wins)
+      const newToken = genId();
+      await setDoc(sessionRef, {
+        token: newToken,
+        deviceId: deviceId,
+        updatedAt: serverTimestamp()
+      }, { merge: true });
+
+      setLocalSessionToken(newToken);
+      return true;
+    }
+
+    async function handleAfterAuth() {
+      const user = auth.currentUser;
+      if (!user) return;
+
+      const ok = await establishSingleDeviceSession(user);
+      if (!ok) return;
+
+      showMsg("Login successful. Redirecting...", "ok");
+      window.location.href = "customers.html";
+    }
+
     loginBtn.addEventListener("click", async () => {
       const email = emailEl.value.trim();
       const password = passEl.value;
-
       if (!email || !password) return showMsg("Enter email and password.", "err");
 
       loginBtn.disabled = true;
@@ -163,8 +233,7 @@
 
       try {
         await signInWithEmailAndPassword(auth, email, password);
-        showMsg("Login successful. Redirecting...", "ok");
-        window.location.href = "customers.html";
+        await handleAfterAuth();
       } catch (e) {
         console.error(e);
         showMsg(e?.message || "Login failed.", "err");
@@ -177,7 +246,6 @@
     signupBtn.addEventListener("click", async () => {
       const email = emailEl.value.trim();
       const password = passEl.value;
-
       if (!email || !password) return showMsg("Enter email and password to create account.", "err");
       if (password.length < 6) return showMsg("Password must be at least 6 characters.", "err");
 
@@ -187,8 +255,7 @@
 
       try {
         await createUserWithEmailAndPassword(auth, email, password);
-        showMsg("Account created. Redirecting...", "ok");
-        window.location.href = "customers.html";
+        await handleAfterAuth();
       } catch (e) {
         console.error(e);
         showMsg(e?.message || "Signup failed.", "err");
