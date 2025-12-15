@@ -32,7 +32,6 @@
       font-weight:900;
       color:#111827;
     }
-
     .login-card{
       background:#ffffff;
       border:1px solid #e5e7eb;
@@ -48,7 +47,6 @@
       margin:0 0 12px;
       text-align:center;
     }
-
     .field{ margin-bottom:10px; }
     .field label{
       display:block;
@@ -71,7 +69,6 @@
       border-color:#6366f1;
       box-shadow:0 0 0 3px rgba(99,102,241,.25);
     }
-
     .btn{
       width:100%;
       border:none;
@@ -98,7 +95,6 @@
       cursor:not-allowed;
       box-shadow:none;
     }
-
     .msg{
       margin-top:10px;
       font-size:13px;
@@ -108,7 +104,6 @@
     }
     .msg.ok{ color:#047857; }
     .msg.err{ color:#b91c1c; }
-
     .hint{
       margin-top:10px;
       font-size:12px;
@@ -165,7 +160,6 @@
       serverTimestamp
     } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore.js";
 
-    // ✅ Firebase config (your project)
     const firebaseConfig = {
       apiKey: "AIzaSyBQMidBylxAZGuQvBmhyAoI2uYLIma9CNU",
       authDomain: "acs-calculator-a4f89.firebaseapp.com",
@@ -211,21 +205,6 @@
       try { localStorage.setItem(SESSION_TOKEN_KEY, token); } catch {}
     }
 
-    onAuthStateChanged(auth, async (user) => {
-  if (!user) return;
-
-  // If already logged in, still ensure session doc is created/updated
-  try {
-    const ok = await establishSingleDeviceSession(user);
-    if (ok) window.location.href = "customers.html";
-  } catch (e) {
-    console.error(e);
-    showMsg("Session setup failed. Please login again.", "err");
-    try { await signOut(auth); } catch {}
-  }
-});
-
-
     async function establishSingleDeviceSession(user){
       const uid = user.uid;
       const deviceId = getOrCreateDeviceId();
@@ -260,16 +239,22 @@
       return true;
     }
 
-    async function afterAuth(){
-      const user = auth.currentUser;
+    // ✅ ONLY place that redirects + session lock (prevents double confirm)
+    onAuthStateChanged(auth, async (user) => {
       if (!user) return;
 
-      const ok = await establishSingleDeviceSession(user);
-      if (!ok) return;
-
-      showMsg("Login successful. Redirecting...", "ok");
-      window.location.href = "customers.html";
-    }
+      try {
+        const ok = await establishSingleDeviceSession(user);
+        if (ok) {
+          showMsg("Login successful. Redirecting...", "ok");
+          window.location.href = "customers.html";
+        }
+      } catch (e) {
+        console.error(e);
+        showMsg("Session setup failed. Please login again.", "err");
+        try { await signOut(auth); } catch {}
+      }
+    });
 
     loginBtn.addEventListener("click", async () => {
       const email = emailEl.value.trim();
@@ -283,7 +268,7 @@
 
       try {
         await signInWithEmailAndPassword(auth, email, password);
-        await afterAuth();
+        // ✅ do NOT redirect here (authStateChanged will do it)
       } catch (e) {
         console.error(e);
         showMsg(e?.message || "Login failed.", "err");
@@ -306,7 +291,7 @@
 
       try {
         await createUserWithEmailAndPassword(auth, email, password);
-        await afterAuth();
+        // ✅ do NOT redirect here (authStateChanged will do it)
       } catch (e) {
         console.error(e);
         showMsg(e?.message || "Signup failed.", "err");
