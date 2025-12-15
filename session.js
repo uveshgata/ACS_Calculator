@@ -18,7 +18,7 @@ const app = getApps().length ? getApps()[0] : initializeApp(firebaseConfig);
 const auth = getAuth(app);
 
 // 5 minutes
-const IDLE_LIMIT_MS = 5 * 60 * 1000;
+const IDLE_LIMIT_MS = 30 * 1000;
 
 // Use localStorage so multiple tabs stay in sync
 const LAST_ACTIVE_KEY = "acs:lastActiveAt";
