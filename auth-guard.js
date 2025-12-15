@@ -1,4 +1,7 @@
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-app.js";
+// auth-guard.js
+// Protects pages: if user is not logged in → redirect to login.html
+
+import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-app.js";
 import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-auth.js";
 
 const firebaseConfig = {
@@ -10,15 +13,17 @@ const firebaseConfig = {
   appId: "1:546157095238:web:17d8c408126cd4ed759d47"
 };
 
-const app = initializeApp(firebaseConfig);
+// Avoid duplicate initializeApp (important when multiple pages/scripts load)
+const app = getApps().length ? getApps()[0] : initializeApp(firebaseConfig);
 const auth = getAuth(app);
 
-// 🔒 Auth guard
+// Global helper (we'll use later for per-admin cloud data)
+window.getAdminUid = () => auth.currentUser?.uid || null;
+
+// ✅ Auth guard
 onAuthStateChanged(auth, (user) => {
   if (!user) {
+    // replace() prevents back button going to protected page
     window.location.replace("login.html");
   }
 });
-
-// expose admin uid (we will use this later)
-window.getAdminUid = () => auth.currentUser?.uid || null;
