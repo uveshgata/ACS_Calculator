@@ -1,6 +1,7 @@
 // session.js
 // Auto-logout after 5 minutes of inactivity (touch/mouse/scroll/keys/visibility)
-// Works with GitHub Pages + Firebase CDN imports
+// Uses localStorage to sync across tabs
+// Prefer calling window.acsLogout() so Firestore session doc is cleared too
 
 import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-app.js";
 import { getAuth, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-auth.js";
@@ -20,13 +21,14 @@ const auth = getAuth(app);
 // 5 minutes
 const IDLE_LIMIT_MS = 5 * 60 * 1000;
 
-// Use localStorage so multiple tabs stay in sync
+// Shared across tabs
 const LAST_ACTIVE_KEY = "acs:lastActiveAt";
 
 // Activity events (mobile + desktop)
 const EVENTS = ["mousemove", "mousedown", "keydown", "touchstart", "touchmove", "scroll", "click"];
 
 let idleTimer = null;
+let listenersBound = false;
 
 function nowMs() { return Date.now(); }
 
@@ -43,6 +45,23 @@ function getLastActive() {
   }
 }
 
+async function doLogout(reasonMsg) {
+  // Best: use your logout.js (clears Firestore session doc too)
+  if (typeof window.acsLogout === "function") {
+    try {
+      // avoid showing confirm popup for auto-logout
+      // we call internal behavior: temporarily bypass confirm by direct signOut if needed
+      // If your acsLogout always confirms, fallback to direct signOut below.
+      await window.acsLogout();
+      return;
+    } catch {}
+  }
+
+  try { await signOut(auth); } catch {}
+  alert(reasonMsg || "You were logged out due to inactivity.");
+  window.location.replace("login.html");
+}
+
 function resetIdleTimer() {
   const ts = nowMs();
   setLastActive(ts);
@@ -50,45 +69,38 @@ function resetIdleTimer() {
   if (idleTimer) clearTimeout(idleTimer);
 
   idleTimer = setTimeout(async () => {
-    // Double-check from storage (in case other tab updated)
     const last = getLastActive();
     const diff = nowMs() - last;
 
     if (diff >= IDLE_LIMIT_MS) {
-      try {
-        await signOut(auth);
-      } catch {}
-      alert("You were logged out due to 5 minutes inactivity.");
-      window.location.replace("login.html");
+      await doLogout("You were logged out due to 5 minutes inactivity.");
     } else {
-      // Someone was active in another tab; schedule again
-      resetIdleTimer();
+      resetIdleTimer(); // another tab was active
     }
-  }, IDLE_LIMIT_MS + 200); // small buffer
+  }, IDLE_LIMIT_MS + 200);
 }
 
 function bindActivityListeners() {
+  if (listenersBound) return;
+  listenersBound = true;
+
   EVENTS.forEach(ev => {
     window.addEventListener(ev, resetIdleTimer, { passive: true });
   });
 
-  // If user switches tabs and comes back, count it as activity
   document.addEventListener("visibilitychange", () => {
     if (!document.hidden) resetIdleTimer();
   });
 
-  // If another tab updates lastActiveAt, reset timer here too
   window.addEventListener("storage", (e) => {
     if (e.key === LAST_ACTIVE_KEY) resetIdleTimer();
   });
 }
 
-// Start only when logged in
 onAuthStateChanged(auth, (user) => {
-  if (user) {
-    // Set initial
-    if (!getLastActive()) setLastActive(nowMs());
-    bindActivityListeners();
-    resetIdleTimer();
-  }
+  if (!user) return;
+
+  if (!getLastActive()) setLastActive(nowMs());
+  bindActivityListeners();
+  resetIdleTimer();
 });
