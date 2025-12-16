@@ -5,13 +5,13 @@
   <title>ACS Calculator - REPORT Card</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
 
-  <!-- ✅ Favicons / PWA -->
-  <link rel="icon" href="favicon.ico">
-  <link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png">
-  <link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png">
-  <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
-  <link rel="manifest" href="manifest.json">
-  <meta name="theme-color" content="#111827">
+  <!-- Home Screen + Favicon (GitHub Pages repo path) -->
+  <link rel="icon" href="/ACS_Calculator/favicon.ico" type="image/x-icon">
+  <link rel="icon" type="image/png" sizes="32x32" href="/ACS_Calculator/favicon-32x32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/ACS_Calculator/favicon-16x16.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="/ACS_Calculator/apple-touch-icon.png">
+  <link rel="manifest" href="/ACS_Calculator/manifest.json">
+  <meta name="theme-color" content="#1f2937">
 
   <link rel="stylesheet" href="base.css">
   <link rel="stylesheet" href="index.css">
@@ -81,8 +81,8 @@
       flex:1 1 160px;
     }
     .btn-whatsapp{
-      background:#dcfce7;
-      color:#166534;
+      background:#07ff5c;
+      color:#ffffff;
     }
     .btn-whatsapp:disabled{
       opacity:.5;
@@ -109,7 +109,7 @@
 <div class="wrapper">
   <h1>ACS Calculator</h1>
 
-  <!-- ✅ Clear customer display on page -->
+  <!-- ✅ Active customer banner -->
   <div class="active-customer-banner">
     <div class="ac-left">
       <div class="ac-title">Active Customer</div>
@@ -138,9 +138,9 @@
       <button class="secondary" id="downloadImgBtn" disabled>Generate image</button>
       <button class="secondary" onclick="window.location.href='daily-entry.html'">Daily entry system</button>
       <button class="secondary" onclick="window.location.href='bills.html'">Bills / Payments</button>
+      <button class="secondary" id="logoutBtn">Logout</button>
     </div>
 
-    <!-- ✅ Share row -->
     <div class="share-row">
       <button class="btn-whatsapp" id="whatsappBtn" disabled>Send on WhatsApp</button>
     </div>
@@ -151,7 +151,6 @@
       <h2 style="color:#D4AF37">ASHRAFI CHICKEN SHOP</h2>
       <h3>REPORT CARD</h3>
 
-      <!-- ✅ Customer line (no ID) -->
       <div class="customer-block">
         <div class="line1" id="customerLine1">Customer: —</div>
       </div>
@@ -196,21 +195,61 @@
 <!-- ✅ Auth/session -->
 <script type="module" src="auth-guard.js"></script>
 <script type="module" src="session.js"></script>
+<script type="module" src="logout.js"></script>
 <script type="module" src="session-lock.js"></script>
 <script type="module" src="session-heartbeat.js"></script>
-<script type="module" src="logout.js"></script>
 
+<!-- ✅ MAIN LOGIC (Cloud Firestore entries) -->
 <script type="module">
-  import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-auth.js";
+  import { auth } from "./firebase.js";
+  import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-auth.js";
+
   import { listCustomers } from "./db-customers.js";
   import { listEntriesInRange, upsertEntry, deleteEntry } from "./db-entries.js";
 
-  const auth = getAuth();
+  const ACTIVE_KEY = "acsActiveCustomerId";
+  const BILLS_KEY_PREFIX = "acsBills:";
 
-  const ACTIVE_KEY    = "acsActiveCustomerId";
-  const BILLS_KEY_PREFIX = "acsBills:"; // bills remain local per customer for now
+  const acName = document.getElementById("acName");
+  const acSub = document.getElementById("acSub");
+  const customerLine1 = document.getElementById("customerLine1");
 
-  function getActiveCustomerId(){ try { return localStorage.getItem(ACTIVE_KEY) || ""; } catch { return ""; } }
+  const fromDateInput = document.getElementById("fromDate");
+  const toDateInput = document.getElementById("toDate");
+  const defaultRateInput = document.getElementById("defaultRate");
+  const generateRowsBtn = document.getElementById("generateRowsBtn");
+  const downloadImgBtn = document.getElementById("downloadImgBtn");
+  const whatsappBtn = document.getElementById("whatsappBtn");
+  const logoutBtn = document.getElementById("logoutBtn");
+
+  const summaryCard = document.getElementById("summaryCard");
+  const entriesBody = document.getElementById("entriesBody");
+  const grandTotalCell = document.getElementById("grandTotalCell");
+  const summaryRange = document.getElementById("summaryRange");
+  const daysLabel = document.getElementById("daysLabel");
+
+  let ACTIVE_CUSTOMER = null;
+  let lastExportFile = null;
+  let lastExportFilename = null;
+
+  // logout button uses your logout.js global function
+  logoutBtn.addEventListener("click", () => window.acsLogout && window.acsLogout());
+
+  function todayIso() {
+    const t = new Date();
+    return `${t.getFullYear()}-${String(t.getMonth()+1).padStart(2,"0")}-${String(t.getDate()).padStart(2,"0")}`;
+  }
+
+  function applyDateLimits() {
+    const t = todayIso();
+    fromDateInput.max = t;
+    toDateInput.max = t;
+  }
+
+  function getActiveCustomerId() {
+    try { return localStorage.getItem(ACTIVE_KEY) || ""; } catch { return ""; }
+  }
+
   function getBillsKey(customerId){ return BILLS_KEY_PREFIX + customerId; }
   function getBills(customerId){
     try {
@@ -243,45 +282,11 @@
     });
   }
 
-  function todayIso() {
-    const t = new Date();
-    return `${t.getFullYear()}-${String(t.getMonth()+1).padStart(2,"0")}-${String(t.getDate()).padStart(2,"0")}`;
-  }
-
-  const acName = document.getElementById("acName");
-  const acSub  = document.getElementById("acSub");
-  const customerLine1 = document.getElementById("customerLine1");
-
-  const fromDateInput = document.getElementById("fromDate");
-  const toDateInput = document.getElementById("toDate");
-  const defaultRateInput = document.getElementById("defaultRate");
-  const generateRowsBtn = document.getElementById("generateRowsBtn");
-  const downloadImgBtn = document.getElementById("downloadImgBtn");
-  const whatsappBtn = document.getElementById("whatsappBtn");
-
-  const summaryCard = document.getElementById("summaryCard");
-  const entriesBody = document.getElementById("entriesBody");
-  const grandTotalCell = document.getElementById("grandTotalCell");
-  const summaryRange = document.getElementById("summaryRange");
-  const daysLabel = document.getElementById("daysLabel");
-
-  // Keep last generated image file for sharing
-  let lastExportFile = null;
-  let lastExportFilename = null;
-
-  let ACTIVE_CUSTOMER = null;
-
   function formatDateDisplay(d) {
     return d.toLocaleDateString("en-GB", { day: "2-digit", month: "long", year: "numeric" });
   }
   function formatDateShort(d) {
     return `${String(d.getDate()).padStart(2,"0")}-${String(d.getMonth()+1).padStart(2,"0")}-${d.getFullYear()}`;
-  }
-  function ddmmyyyyToIso(dateText) {
-    const parts = String(dateText).split("-");
-    if (parts.length !== 3) return null;
-    const [dd, mm, yyyy] = parts;
-    return `${yyyy}-${mm.padStart(2,"0")}-${dd.padStart(2,"0")}`;
   }
   function setDaysLabel(start, end) {
     const diff = Math.round((end - start) / 86400000) + 1;
@@ -305,9 +310,8 @@
   }
 
   function makeAutoFilename() {
-    // Rahul_Sharma_01-12-2025_to_09-12-2025.png
-    const name = ACTIVE_CUSTOMER && ACTIVE_CUSTOMER.displayName ? ACTIVE_CUSTOMER.displayName : "Customer";
-    const fromVal = fromDateInput.value; // YYYY-MM-DD
+    const name = ACTIVE_CUSTOMER?.displayName ? ACTIVE_CUSTOMER.displayName : "Customer";
+    const fromVal = fromDateInput.value;
     const toVal = toDateInput.value;
 
     function toDDMMYYYY(iso) {
@@ -316,33 +320,20 @@
       return `${d}-${m}-${y}`;
     }
 
-    const fromTxt = toDDMMYYYY(fromVal);
-    const toTxt = toDDMMYYYY(toVal);
-    return `${safeFileNamePart(name)}_${fromTxt}_to_${toTxt}.png`;
+    return `${safeFileNamePart(name)}_${toDDMMYYYY(fromVal)}_to_${toDDMMYYYY(toVal)}.png`;
   }
 
-  function applyDateLimits() {
-    const t = todayIso();
-    fromDateInput.max = t;
-    toDateInput.max = t;
-  }
-
-  async function getActiveCustomer(){
+  async function getActiveCustomer() {
     const id = getActiveCustomerId();
     if (!id) return null;
     const customers = await listCustomers();
     return (customers || []).find(c => c.customerId === id) || null;
   }
 
-  // ==============================
-  // ✅ CLOUD: load entries in range
-  // ==============================
   async function loadEntriesMap(customerId, fromIso, toIso) {
     const rows = await listEntriesInRange(customerId, fromIso, toIso);
     const map = {};
-    (rows || []).forEach(r => {
-      if (r && r.dateIso) map[r.dateIso] = r;
-    });
+    (rows || []).forEach(r => { if (r?.dateIso) map[r.dateIso] = r; });
     return map;
   }
 
@@ -362,7 +353,6 @@
     const start = new Date(fromVal);
     const end = new Date(toVal);
 
-    // ✅ Fetch entries from Firestore for this customer + range
     const entriesMap = await loadEntriesMap(customerId, fromVal, toVal);
 
     entriesBody.innerHTML = "";
@@ -405,7 +395,6 @@
         rateInput.value = defaultRate.toString();
       }
 
-      // locking from bills (local)
       if (isLockedDate(customerId, isoKey)) {
         kgInput.disabled = true;
         rateInput.disabled = true;
@@ -450,7 +439,6 @@
     summaryCard.style.display = "flex";
     downloadImgBtn.disabled = false;
 
-    // reset share state
     lastExportFile = null;
     lastExportFilename = null;
     whatsappBtn.disabled = true;
@@ -458,13 +446,17 @@
     updateGrandTotal();
   }
 
-  // =====================================
-  // ✅ CLOUD: sync report edits to Firestore
-  // =====================================
-  async function syncReportEditsToCloudEntries(customerId) {
-    const t = todayIso();
+  function ddmmyyyyToIso(dateText) {
+    const parts = String(dateText).split("-");
+    if (parts.length !== 3) return null;
+    const [dd, mm, yyyy] = parts;
+    return `${yyyy}-${mm.padStart(2,"0")}-${dd.padStart(2,"0")}`;
+  }
 
+  async function syncReportEditsToCloud(customerId) {
+    const t = todayIso();
     const ops = [];
+
     entriesBody.querySelectorAll("tr").forEach(tr => {
       const isoKey = ddmmyyyyToIso(tr.children[2].textContent.trim());
       if (!isoKey) return;
@@ -479,7 +471,7 @@
       const valid = !isNaN(kg) && !isNaN(rate) && kg > 0 && rate > 0;
 
       if (valid) ops.push(upsertEntry(customerId, isoKey, { kg, rate }));
-      else ops.push(deleteEntry(customerId, isoKey).catch(()=>true)); // ignore if not exists
+      else ops.push(deleteEntry(customerId, isoKey).catch(()=>true));
     });
 
     await Promise.all(ops);
@@ -490,7 +482,6 @@
     const toVal = toDateInput.value;
     if (!fromVal || !toVal) return;
 
-    // total from current table (after edits)
     let total = 0;
     entriesBody.querySelectorAll("tr").forEach(tr => {
       const val = parseFloat(tr.children[0].textContent.replace(/,/g, ""));
@@ -515,7 +506,6 @@
       return;
     }
 
-    // update only if still pending
     const bill = bills[idx];
     const stage = statusFromAmounts(bill);
     if (stage !== "pending") return;
@@ -532,9 +522,7 @@
     clone.classList.add("export-card");
     document.body.appendChild(clone);
 
-    // Replace inputs with text
-    const cloneTbody = clone.querySelector("tbody");
-    const cloneRows = cloneTbody.querySelectorAll("tr");
+    const cloneRows = clone.querySelectorAll("tbody tr");
     const originalRows = entriesBody.querySelectorAll("tr");
 
     cloneRows.forEach((row, idx) => {
@@ -562,8 +550,7 @@
     if (!customerId) return null;
     if (summaryCard.style.display === "none") return null;
 
-    // ✅ Sync edits to cloud + update bill total (pending only)
-    await syncReportEditsToCloudEntries(customerId);
+    await syncReportEditsToCloud(customerId);
     upsertBillForCurrentRange(customerId);
 
     const exportCard = buildExportCard();
@@ -608,20 +595,21 @@
         });
         return;
       }
-    } catch (e) {
-      console.error("Share failed", e);
-    }
+    } catch {}
 
     const msg = encodeURIComponent(
-      `Report ready: ${lastExportFilename || "report-card.png"}\n(If image not attached automatically, please send the downloaded image.)`
+      `Report ready: ${lastExportFilename || "report-card.png"}\n(Attach the downloaded image in WhatsApp.)`
     );
     window.open(`https://wa.me/?text=${msg}`, "_blank");
-    alert("Your browser may not support sharing image directly. The image is saved—attach it in WhatsApp manually.");
+    alert("Your browser may not support sharing image directly. Downloaded image attach manually in WhatsApp.");
   }
 
   generateRowsBtn.addEventListener("click", createRows);
   downloadImgBtn.addEventListener("click", downloadImage);
   whatsappBtn.addEventListener("click", sendOnWhatsApp);
+
+  // ✅ Boot
+  applyDateLimits();
 
   onAuthStateChanged(auth, async (user) => {
     if (!user) return;
@@ -642,12 +630,10 @@
         + (ACTIVE_CUSTOMER.phone ? ` (${ACTIVE_CUSTOMER.phone})` : "");
     } else {
       acName.textContent = "Unknown customer";
-      acSub.textContent  = "";
+      acSub.textContent = "";
       customerLine1.textContent = "Customer: Unknown";
     }
-
-    applyDateLimits();
   });
 </script>
 </body>
-</html>
+  </html>
