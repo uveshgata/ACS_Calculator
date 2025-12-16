@@ -4,110 +4,341 @@
   <meta charset="UTF-8" />
   <title>ACS Calculator - Daily Entry</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <!-- Home Screen + Favicon (GitHub Pages repo path) -->
-<link rel="icon" href="/ACS_Calculator/favicon.ico" type="image/x-icon">
-<link rel="icon" type="image/png" sizes="32x32" href="/ACS_Calculator/favicon-32x32.png">
-<link rel="icon" type="image/png" sizes="16x16" href="/ACS_Calculator/favicon-16x16.png">
-<link rel="apple-touch-icon" sizes="180x180" href="/ACS_Calculator/apple-touch-icon.png">
-<link rel="manifest" href="/ACS_Calculator/manifest.json">
-<meta name="theme-color" content="#1f2937">
+
+  <!-- ✅ Favicons / PWA -->
+  <link rel="icon" href="favicon.ico">
+  <link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#111827">
 
   <link rel="stylesheet" href="base.css">
   <link rel="stylesheet" href="daily-entry.css">
+
+  <style>
+    /* If daily-entry.css missing, page still looks OK */
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    body {
+      margin: 0;
+      padding: 16px;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: radial-gradient(circle at top, #eef2ff, #e5e7eb);
+      display: flex;
+      justify-content: center;
+    }
+    .wrapper { width: 100%; max-width: 520px; }
+
+    h1 {
+      text-align: center;
+      margin: 0 0 12px;
+      font-size: 22px;
+      font-weight: 900;
+      color: #111827;
+    }
+
+    .top-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+
+    button {
+      border: none;
+      border-radius: 999px;
+      padding: 8px 12px;
+      font-size: 13px;
+      font-weight: 800;
+      cursor: pointer;
+      transition: .15s;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      white-space: nowrap;
+    }
+    button.primary {
+      background: linear-gradient(135deg, #4f46e5, #7c3aed);
+      color: white;
+      box-shadow: 0 6px 14px rgba(88,80,236,0.35);
+    }
+    button.secondary { background: #e5e7eb; color: #111827; }
+    button.danger { background: #fee2e2; color: #b91c1c; }
+
+    .card {
+      background: #ffffff;
+      padding: 16px;
+      border-radius: 16px;
+      box-shadow: 0 8px 20px rgba(0,0,0,0.08);
+      margin-bottom: 16px;
+      border:1px solid #e5e7eb;
+    }
+
+    .active-customer-banner{
+      background:#ffffff;
+      border:1px solid #e5e7eb;
+      border-radius:14px;
+      padding:10px 12px;
+      box-shadow: 0 6px 16px rgba(0,0,0,0.06);
+      margin-bottom:12px;
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      gap:10px;
+    }
+    .ac-left{ display:flex; flex-direction:column; gap:2px; min-width:0; }
+    .ac-title{
+      font-size:12px; color:#6b7280; font-weight:900; letter-spacing:.02em; text-transform:uppercase;
+    }
+    .ac-name{
+      font-size:15px; font-weight:1000; color:#111827; line-height:1.2;
+      white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width: 320px;
+    }
+    .ac-sub{
+      font-size:12px; color:#6b7280;
+      white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width: 320px;
+    }
+    .ac-btn{
+      padding:8px 12px; border-radius:999px; border:none;
+      background:#e5e7eb; color:#111827; font-weight:900; cursor:pointer; white-space:nowrap;
+    }
+
+    label {
+      display: block;
+      font-size: 13px;
+      margin-bottom: 4px;
+      color: #374151;
+      font-weight: 800;
+    }
+    input {
+      width: 100%;
+      padding: 10px 12px;
+      border-radius: 12px;
+      border: 1px solid #d1d5db;
+      font-size: 14px;
+      margin-bottom: 10px;
+      outline: none;
+      transition: .15s;
+    }
+    input:focus {
+      border-color: #6366f1;
+      box-shadow: 0 0 0 3px rgba(99,102,241,.22);
+    }
+
+    .status-text {
+      font-size: 13px;
+      margin-top: 8px;
+      font-weight: 900;
+      text-align:center;
+    }
+
+    .note {
+      font-size: 12px;
+      color: #6b7280;
+      margin-top: 8px;
+      line-height:1.4;
+      text-align:center;
+      font-weight:700;
+    }
+
+    .list-card {
+      background: #ffffff;
+      padding: 12px 14px;
+      border-radius: 14px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+      border:1px solid #e5e7eb;
+    }
+    .list-card h2 { margin: 0 0 8px; font-size: 15px; font-weight: 1000; }
+
+    .entry-item {
+      font-size: 13px;
+      padding: 8px 10px;
+      border-bottom: 1px solid #e5e7eb;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+      border-radius: 12px;
+      margin-bottom: 6px;
+      background: #f9fafb;
+      border: 1px solid transparent;
+    }
+    .entry-item:last-child { border-bottom: none; }
+
+    .entry-pending { background:#f9fafb; border-color:#e5e7eb; }
+    .entry-loading { background:#fefce8; border-color:#facc15; }
+    .entry-success { background:#ecfdf5; border-color:#16a34a; }
+
+    .entry-left {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      min-width:0;
+    }
+    .entry-date {
+      font-weight: 1000;
+      color: #111827;
+    }
+    .entry-status-pill {
+      font-size: 11px;
+      padding: 2px 8px;
+      border-radius: 999px;
+      display: inline-block;
+      font-weight: 900;
+      width: fit-content;
+    }
+    .pill-pending { background:#e5e7eb; color:#374151; }
+    .pill-loading { background:#fef3c7; color:#92400e; }
+    .pill-success { background:#dcfce7; color:#166534; }
+
+    .entry-right{
+      display:flex;
+      gap:8px;
+      align-items:center;
+      flex-wrap:wrap;
+      justify-content:flex-end;
+    }
+    .mini-btn{
+      border:none;
+      border-radius:999px;
+      padding:7px 10px;
+      font-size:12px;
+      font-weight:1000;
+      cursor:pointer;
+      background:#e5e7eb;
+      color:#111827;
+    }
+    .mini-btn.danger{ background:#fee2e2; color:#b91c1c; }
+
+    .muted { color: #6b7280; font-weight:800; }
+  </style>
 </head>
+
 <body>
 <div class="wrapper">
   <h1>Daily Entry</h1>
 
+  <!-- ✅ Clear customer display on page -->
+  <div class="active-customer-banner">
+    <div class="ac-left">
+      <div class="ac-title">Active Customer</div>
+      <div id="acName" class="ac-name">—</div>
+      <div id="acSub" class="ac-sub">—</div>
+    </div>
+    <button class="ac-btn" onclick="window.location.href='customers.html'">Change</button>
+  </div>
+
   <div class="top-actions">
     <button class="secondary" onclick="window.location.href='index.html'">← Report Card</button>
     <button class="secondary" onclick="window.location.href='bills.html'">Bills / Payments</button>
-    <button class="secondary" onclick="window.location.href='customers.html'">Change customer</button>
-    <button class="danger" id="clearAllBtn">Clear all entries</button>
-    <button onclick="acsLogout()" class="secondary">Logout</button>
+    <button class="danger" id="logoutBtn">Logout</button>
   </div>
 
   <div class="card">
-    <div id="activeCustomerLine" class="note" style="margin-bottom:10px;"></div>
-
     <label for="date">Date</label>
     <input type="date" id="date" />
 
     <label for="kg">Quantity (kg)</label>
-    <input type="number" id="kg" placeholder="e.g. 10" step="1" min="0" />
+    <input type="number" id="kg" placeholder="e.g. 10" step="0.01" min="0" />
 
     <label for="rate">Rate (₹ per kg)</label>
-    <input type="number" id="rate" placeholder="e.g. 230" step="10" min="0" />
+    <input type="number" id="rate" placeholder="e.g. 230" step="0.01" min="0" />
 
     <button class="primary" id="saveBtn">Save entry</button>
-    <div class="status-text" id="statusMsg"></div>
 
+    <div class="status-text" id="statusMsg"></div>
     <div class="note">
-      Customer-specific data is stored in this browser.
+      Entries are now saved in Cloud (Firestore) for this customer.
     </div>
   </div>
 
   <div class="list-card">
     <h2>Saved entries (latest 15)</h2>
-    <div id="entriesList" class="muted">No entries yet.</div>
+    <div id="entriesList" class="muted">Loading…</div>
   </div>
 </div>
 
-<script>
-  const CUSTOMERS_KEY = "acsCustomers";
+<!-- ✅ Auth/session -->
+<script type="module" src="auth-guard.js"></script>
+<script type="module" src="session.js"></script>
+<script type="module" src="session-lock.js"></script>
+<script type="module" src="session-heartbeat.js"></script>
+<script type="module" src="logout.js"></script>
+
+<script type="module">
+  import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-auth.js";
+  import { listCustomers } from "./db-customers.js";
+  import { upsertEntry, getEntry, deleteEntry, listLatestEntries } from "./db-entries.js";
+
+  const auth = getAuth();
+
   const ACTIVE_KEY    = "acsActiveCustomerId";
+  const CUSTOMERS_KEY = "acsCustomers"; // only for fallback display; main source is db-customers
+  const BILLS_KEY_PREFIX = "acsBills:"; // bills remain local per customer for now
 
-  function getActiveCustomerId() {
-    return localStorage.getItem(ACTIVE_KEY);
+  const acName = document.getElementById("acName");
+  const acSub  = document.getElementById("acSub");
+
+  const dateInput  = document.getElementById("date");
+  const kgInput    = document.getElementById("kg");
+  const rateInput  = document.getElementById("rate");
+  const saveBtn    = document.getElementById("saveBtn");
+  const statusMsg  = document.getElementById("statusMsg");
+  const entriesList= document.getElementById("entriesList");
+  const logoutBtn  = document.getElementById("logoutBtn");
+
+  logoutBtn.addEventListener("click", () => window.acsLogout && window.acsLogout());
+
+  function showStatus(text, ok){
+    statusMsg.textContent = text || "";
+    statusMsg.style.color = ok ? "#047857" : "#b91c1c";
   }
-  function getCustomers() {
-    try { return JSON.parse(localStorage.getItem(CUSTOMERS_KEY)) || []; } catch { return []; }
-  }
-  function getActiveCustomer() {
-    const id = getActiveCustomerId();
-    return getCustomers().find(c => c.customerId === id) || null;
-  }
 
-  const customerId = getActiveCustomerId();
-  if (!customerId) window.location.href = "customers.html";
-
-  const ENTRIES_KEY = `acsEntries:${customerId}`;
-  const BILLS_KEY   = `acsBills:${customerId}`;
-
-  const dateInput   = document.getElementById("date");
-  const kgInput     = document.getElementById("kg");
-  const rateInput   = document.getElementById("rate");
-  const saveBtn     = document.getElementById("saveBtn");
-  const statusMsg   = document.getElementById("statusMsg");
-  const entriesList = document.getElementById("entriesList");
-  const clearAllBtn = document.getElementById("clearAllBtn");
-  const activeCustomerLine = document.getElementById("activeCustomerLine");
-
-  const activeCustomer = getActiveCustomer();
-  activeCustomerLine.textContent = activeCustomer
-    ? `Active customer: ${activeCustomer.displayName}${activeCustomer.phone ? " • " + activeCustomer.phone : ""}`
-    : `Active customer ID: ${customerId}`;
-
-  function todayIso() {
+  function todayIso(){
     const t = new Date();
     return `${t.getFullYear()}-${String(t.getMonth()+1).padStart(2,"0")}-${String(t.getDate()).padStart(2,"0")}`;
   }
 
-  function getStoredEntries() {
-    try { return JSON.parse(localStorage.getItem(ENTRIES_KEY)) || {}; } catch { return {}; }
-  }
-  function setStoredEntries(obj) {
-    localStorage.setItem(ENTRIES_KEY, JSON.stringify(obj));
+  function applyDateLimits(){
+    const t = todayIso();
+    dateInput.max = t; // ✅ future date block (UI)
   }
 
-  function getBills() {
-    try { return JSON.parse(localStorage.getItem(BILLS_KEY)) || []; } catch { return []; }
-  }
-  function setBills(bills) {
-    localStorage.setItem(BILLS_KEY, JSON.stringify(bills));
+  function getActiveCustomerId(){
+    try { return localStorage.getItem(ACTIVE_KEY) || ""; } catch { return ""; }
   }
 
-  function statusFromAmounts(bill) {
+  async function getActiveCustomer(){
+    const id = getActiveCustomerId();
+    if (!id) return null;
+    try {
+      const customers = await listCustomers();
+      return (customers || []).find(c => c.customerId === id) || null;
+    } catch {
+      // fallback to local (if any)
+      try {
+        const local = JSON.parse(localStorage.getItem(CUSTOMERS_KEY) || "[]") || [];
+        return local.find(c => c.customerId === id) || null;
+      } catch {
+        return null;
+      }
+    }
+  }
+
+  function getBillsKey(customerId){
+    return BILLS_KEY_PREFIX + customerId;
+  }
+
+  function getBills(customerId){
+    try {
+      const raw = localStorage.getItem(getBillsKey(customerId));
+      return raw ? JSON.parse(raw) : [];
+    } catch {
+      return [];
+    }
+  }
+
+  function statusFromAmounts(bill){
     const total = bill.total || 0;
     const paid  = bill.paid  || 0;
     if (total <= 0) return "pending";
@@ -116,8 +347,20 @@
     return "success";
   }
 
-  function billStageForDate(dateIso) {
-    const bills = getBills();
+  // Locked only if bill stage is loading/success
+  function isLockedDate(customerId, dateIso){
+    const bills = getBills(customerId);
+    return bills.some(b => {
+      if (!b.from || !b.to) return false;
+      if (!(b.from <= dateIso && dateIso <= b.to)) return false;
+      const s = statusFromAmounts(b);
+      return s === "loading" || s === "success";
+    });
+  }
+
+  // for one date show strongest status (pending/loading/success) if inside any bill
+  function statusForDate(customerId, dateIso){
+    const bills = getBills(customerId);
     const order = { pending: 1, loading: 2, success: 3 };
     let best = null;
 
@@ -129,164 +372,123 @@
       }
     });
 
-    return best; // null | pending | loading | success
+    return best; // null if not in any bill
   }
 
-  // lock only when payment started (loading/success)
-  function isLockedDate(dateIso) {
-    const stage = billStageForDate(dateIso);
-    return stage === "loading" || stage === "success";
+  function ddmmyyyy(dateIso){
+    const [y,m,d] = String(dateIso).split("-");
+    return `${d}-${m}-${y}`;
   }
 
-  function recomputeBillsForDate(dateIso) {
-    const entries = getStoredEntries();
-    const bills = getBills();
-    let changed = false;
-
-    bills.forEach(bill => {
-      if (!bill.from || !bill.to) return;
-      if (!(bill.from <= dateIso && dateIso <= bill.to)) return;
-
-      let sum = 0;
-      for (let d = new Date(bill.from); d <= new Date(bill.to); d.setDate(d.getDate()+1)) {
-        const iso = d.toISOString().slice(0,10);
-        const e = entries[iso];
-        if (e) {
-          const kg = parseFloat(e.kg);
-          const rate = parseFloat(e.rate);
-          if (!isNaN(kg) && !isNaN(rate)) sum += kg * rate;
-        }
-      }
-
-      const stage = statusFromAmounts(bill);
-      // Only update totals if still pending (payment not initialized)
-      if (stage === "pending") {
-        if ((bill.total || 0) !== sum) {
-          bill.total = sum;
-          bill.status = statusFromAmounts(bill);
-          changed = true;
-        }
-      }
-    });
-
-    if (changed) setBills(bills);
+  async function fillInputsIfExists(customerId, dateIso){
+    const existing = await getEntry(customerId, dateIso);
+    if (existing) {
+      kgInput.value = existing.kg ?? "";
+      rateInput.value = existing.rate ?? "";
+    } else {
+      kgInput.value = "";
+      rateInput.value = "";
+    }
   }
 
-  function applyDateLimits() {
-    dateInput.max = todayIso();
-  }
-  function setTodayDate() {
-    dateInput.value = todayIso();
-  }
-  function formatDateForGujaratiPrompt(dateIso) {
-    try {
-      return new Date(dateIso).toLocaleDateString("en-GB", { day:"2-digit", month:"short", year:"numeric" });
-    } catch { return dateIso; }
-  }
+  async function refreshList(customerId){
+    entriesList.textContent = "Loading…";
+    entriesList.classList.add("muted");
 
-  function refreshList() {
-    const entries = getStoredEntries();
-    let keys = Object.keys(entries).sort();
-    if (keys.length === 0) {
+    const rows = await listLatestEntries(customerId, 15);
+
+    if (!rows || rows.length === 0) {
       entriesList.textContent = "No entries yet.";
       entriesList.classList.add("muted");
       return;
     }
-    if (keys.length > 15) keys = keys.slice(-15);
-    keys = keys.reverse();
 
     entriesList.innerHTML = "";
     entriesList.classList.remove("muted");
 
-    keys.forEach(dateIso => {
-      const e = entries[dateIso];
-      const total = (e.kg || 0) * (e.rate || 0);
-      const stage = billStageForDate(dateIso);
-      const locked = isLockedDate(dateIso);
+    rows.forEach(r => {
+      const dateIso = r.dateIso;
+      const total = Number(r.total || (Number(r.kg||0)*Number(r.rate||0)));
+      const status = statusForDate(customerId, dateIso);
 
       const item = document.createElement("div");
       item.className = "entry-item";
-      if (stage === "pending") item.classList.add("entry-pending");
-      if (stage === "loading") item.classList.add("entry-loading");
-      if (stage === "success") item.classList.add("entry-success");
+      if (status === "pending") item.classList.add("entry-pending");
+      if (status === "loading") item.classList.add("entry-loading");
+      if (status === "success") item.classList.add("entry-success");
 
       const left = document.createElement("div");
       left.className = "entry-left";
 
       const dateSpan = document.createElement("span");
       dateSpan.className = "entry-date";
-      dateSpan.textContent = dateIso;
+      dateSpan.textContent = `${dateIso} (${ddmmyyyy(dateIso)})`;
       left.appendChild(dateSpan);
 
-      if (stage) {
+      if (status) {
         const pill = document.createElement("span");
         pill.className = "entry-status-pill " +
-          (stage === "pending" ? "pill-pending" :
-           stage === "loading" ? "pill-loading" : "pill-success");
+          (status === "pending" ? "pill-pending" :
+           status === "loading" ? "pill-loading" : "pill-success");
         pill.textContent =
-          stage === "pending" ? "Bill pending (editable)" :
-          stage === "loading" ? "Payment started (locked)" :
-          "Bill paid (locked)";
+          status === "pending" ? "Pending bill" :
+          status === "loading" ? "Bill partial / waiting" :
+          "Bill paid";
         left.appendChild(pill);
       }
 
       const right = document.createElement("div");
-      right.style.display = "flex";
-      right.style.alignItems = "center";
-      right.style.gap = "10px";
+      right.className = "entry-right";
 
-      const amountText = document.createElement("span");
-      amountText.textContent = `${e.kg} kg × ₹${e.rate} = ₹${total.toFixed(0)}`;
+      const amountSpan = document.createElement("span");
+      amountSpan.style.fontWeight = "1000";
+      amountSpan.textContent = `${Number(r.kg||0)} kg × ₹${Number(r.rate||0)} = ₹${Math.round(total)}`;
+      right.appendChild(amountSpan);
 
-      const actions = document.createElement("div");
-      actions.className = "entry-actions";
+      const locked = isLockedDate(customerId, dateIso);
 
       const editBtn = document.createElement("button");
-      editBtn.className = "small-btn edit";
+      editBtn.className = "mini-btn";
       editBtn.textContent = "Edit";
       editBtn.disabled = locked;
-      editBtn.addEventListener("click", () => {
-        if (locked) return;
+      editBtn.title = locked ? "Locked (payment started)" : "";
+      editBtn.addEventListener("click", async () => {
         dateInput.value = dateIso;
-        kgInput.value = e.kg;
-        rateInput.value = e.rate;
-        statusMsg.textContent = `Editing: ${dateIso} (update and Save)`;
-        statusMsg.style.color = "#0369a1";
+        await fillInputsIfExists(customerId, dateIso);
+        showStatus(locked ? "Locked date (payment started)." : "Edit loaded. Update kg/rate and Save.", !locked);
         window.scrollTo({ top: 0, behavior: "smooth" });
-        kgInput.focus();
       });
 
       const delBtn = document.createElement("button");
-      delBtn.className = "small-btn delete";
+      delBtn.className = "mini-btn danger";
       delBtn.textContent = "Delete";
       delBtn.disabled = locked;
-      delBtn.addEventListener("click", () => {
-        if (locked) {
-          alert("આ તારીખની એન્ટ્રી લોક છે કારણ કે પેમેન્ટ શરૂ થઈ ગયું છે.");
-          return;
+      delBtn.title = locked ? "Locked (payment started)" : "";
+      delBtn.addEventListener("click", async () => {
+        if (locked) return;
+
+        const ok = confirm(`Delete entry for ${dateIso}?`);
+        if (!ok) return;
+
+        try {
+          await deleteEntry(customerId, dateIso);
+          showStatus(`Deleted: ${dateIso}`, true);
+
+          // If deleting currently selected date, clear inputs
+          if (dateInput.value === dateIso) {
+            kgInput.value = "";
+            rateInput.value = "";
+          }
+
+          await refreshList(customerId);
+        } catch (e) {
+          console.error(e);
+          showStatus("Delete failed.", false);
         }
-        if (!confirm(`Delete entry for ${dateIso}?`)) return;
-
-        const all = getStoredEntries();
-        delete all[dateIso];
-        setStoredEntries(all);
-
-        recomputeBillsForDate(dateIso);
-
-        refreshList();
-        statusMsg.textContent = `Deleted: ${dateIso}`;
-        statusMsg.style.color = "#b91c1c";
-
-        setTodayDate();
-        kgInput.value = "";
-        rateInput.value = "";
       });
 
-      actions.appendChild(editBtn);
-      actions.appendChild(delBtn);
-
-      right.appendChild(amountText);
-      right.appendChild(actions);
+      right.appendChild(editBtn);
+      right.appendChild(delBtn);
 
       item.appendChild(left);
       item.appendChild(right);
@@ -294,82 +496,114 @@
     });
   }
 
-  saveBtn.addEventListener("click", () => {
-    const dateVal = dateInput.value;
-    const kg = parseFloat(kgInput.value);
-    const rate = parseFloat(rateInput.value);
+  function setDefaultDate(){
+    dateInput.value = todayIso();
+  }
 
-    if (!dateVal || isNaN(kg) || isNaN(rate)) {
-      statusMsg.textContent = "Please enter date, kg and rate.";
-      statusMsg.style.color = "#b91c1c";
-      return;
-    }
+  // When date changes, auto-load existing entry (cloud) into inputs (if not locked)
+  dateInput.addEventListener("change", async () => {
+    const customerId = getActiveCustomerId();
+    if (!customerId) return;
 
-    // Future block
+    const iso = dateInput.value;
     const t = todayIso();
-    if (dateVal > t) {
-      statusMsg.textContent = "Future date entry is not allowed.";
-      statusMsg.style.color = "#b91c1c";
+    if (iso > t) {
+      showStatus("Future dates are not allowed.", false);
+      dateInput.value = t;
       return;
     }
 
-    // Lock only if payment started
-    if (isLockedDate(dateVal)) {
-      statusMsg.textContent = "Locked: payment already started for this bill.";
-      statusMsg.style.color = "#b91c1c";
-      return;
-    }
-
-    const entries = getStoredEntries();
-    const exists = !!entries[dateVal];
-
-    if (exists) {
-      const pretty = formatDateForGujaratiPrompt(dateVal);
-      const ok = confirm(
-        `તારીખ ${pretty} ની એન્ટ્રી દાખલ થયેલ છે.\nશું તમે જૂની એન્ટ્રીના બદલે નવી એન્ટ્રી સેવ કરવા માંગો છો?`
-      );
-      if (!ok) {
-        statusMsg.textContent = "Overwrite cancelled.";
-        statusMsg.style.color = "#92400e";
-        return;
-      }
-    }
-
-    entries[dateVal] = { kg, rate };
-    setStoredEntries(entries);
-
-    recomputeBillsForDate(dateVal);
-
-    statusMsg.textContent = `Saved: ${dateVal} → ${kg} kg × ₹${rate}`;
-    statusMsg.style.color = "#047857";
-    refreshList();
-
-    kgInput.value = "";
-    rateInput.value = "";
-    setTodayDate();
-    kgInput.focus();
-  });
-
-  clearAllBtn.addEventListener("click", () => {
-    if (confirm("Clear all saved entries for this customer?")) {
-      localStorage.removeItem(ENTRIES_KEY);
-      refreshList();
-      statusMsg.textContent = "All entries cleared.";
-      statusMsg.style.color = "#b91c1c";
-      setTodayDate();
+    const locked = isLockedDate(customerId, iso);
+    saveBtn.disabled = locked;
+    if (locked) {
+      showStatus("This date is locked (payment started).", false);
       kgInput.value = "";
       rateInput.value = "";
+      return;
+    }
+
+    await fillInputsIfExists(customerId, iso);
+    showStatus("", true);
+  });
+
+  saveBtn.addEventListener("click", async () => {
+    const customerId = getActiveCustomerId();
+    if (!customerId) return;
+
+    const dateVal = dateInput.value;
+    const t = todayIso();
+
+    if (!dateVal) return showStatus("Please select a date.", false);
+    if (dateVal > t) return showStatus("Future dates are not allowed.", false);
+
+    if (isLockedDate(customerId, dateVal)) {
+      return showStatus("This date is locked (payment started).", false);
+    }
+
+    const kg   = parseFloat(kgInput.value);
+    const rate = parseFloat(rateInput.value);
+
+    if (isNaN(kg) || isNaN(rate)) {
+      return showStatus("Please enter kg and rate.", false);
+    }
+
+    try {
+      // ✅ If entry exists, ask overwrite in Gujarati
+      const existing = await getEntry(customerId, dateVal);
+      if (existing) {
+        const ok = confirm(
+          `તારીખ ${ddmmyyyy(dateVal)} ની એન્ટ્રી દાખલ થઈ ગયેલ છે.\n` +
+          `શું તમે જૂની એન્ટ્રી ના બદલે નવી એન્ટ્રી સેવ કરવા માંગો છો?`
+        );
+        if (!ok) {
+          showStatus("Overwrite cancelled.", false);
+          return;
+        }
+      }
+
+      await upsertEntry(customerId, dateVal, { kg, rate });
+
+      showStatus(`Saved: ${dateVal} → ${kg} kg × ₹${rate}`, true);
+
+      // ✅ Reset textboxes after save (keep date)
+      kgInput.value = "";
+      rateInput.value = "";
+
+      await refreshList(customerId);
+    } catch (e) {
+      console.error(e);
+      showStatus(e?.message || "Save failed.", false);
     }
   });
 
-  applyDateLimits();
-  setTodayDate();
-  refreshList();
+  onAuthStateChanged(auth, async (user) => {
+    if (!user) return;
+
+    const customerId = getActiveCustomerId();
+    if (!customerId) {
+      window.location.href = "customers.html";
+      return;
+    }
+
+    const c = await getActiveCustomer();
+    if (c) {
+      acName.textContent = c.displayName || "Unnamed customer";
+      acSub.textContent  = c.phone ? `📞 ${c.phone}` : "";
+    } else {
+      acName.textContent = "Unknown customer";
+      acSub.textContent = "";
+    }
+
+    applyDateLimits();
+    setDefaultDate();
+
+    // Load inputs for today (unless locked)
+    const locked = isLockedDate(customerId, dateInput.value);
+    saveBtn.disabled = locked;
+    if (!locked) await fillInputsIfExists(customerId, dateInput.value);
+
+    await refreshList(customerId);
+  });
 </script>
-  <script type="module" src="auth-guard.js"></script>
-  <script type="module" src="session.js"></script>
-  <script type="module" src="logout.js"></script>
-  <script type="module" src="session-lock.js"></script>
-  <script type="module" src="session-heartbeat.js"></script>
 </body>
 </html>
