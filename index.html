@@ -4,13 +4,15 @@
   <meta charset="UTF-8" />
   <title>ACS Calculator - REPORT Card</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <!-- Home Screen + Favicon (GitHub Pages repo path) -->
-<link rel="icon" href="/ACS_Calculator/favicon.ico" type="image/x-icon">
-<link rel="icon" type="image/png" sizes="32x32" href="/ACS_Calculator/favicon-32x32.png">
-<link rel="icon" type="image/png" sizes="16x16" href="/ACS_Calculator/favicon-16x16.png">
-<link rel="apple-touch-icon" sizes="180x180" href="/ACS_Calculator/apple-touch-icon.png">
-<link rel="manifest" href="/ACS_Calculator/manifest.json">
-<meta name="theme-color" content="#1f2937">
+
+  <!-- ✅ Favicons / PWA -->
+  <link rel="icon" href="favicon.ico">
+  <link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#111827">
+
   <link rel="stylesheet" href="base.css">
   <link rel="stylesheet" href="index.css">
 
@@ -79,8 +81,8 @@
       flex:1 1 160px;
     }
     .btn-whatsapp{
-      background:#07ff5c;
-      color:#ffffff;
+      background:#dcfce7;
+      color:#166534;
     }
     .btn-whatsapp:disabled{
       opacity:.5;
@@ -102,6 +104,7 @@
     }
   </style>
 </head>
+
 <body>
 <div class="wrapper">
   <h1>ACS Calculator</h1>
@@ -135,7 +138,6 @@
       <button class="secondary" id="downloadImgBtn" disabled>Generate image</button>
       <button class="secondary" onclick="window.location.href='daily-entry.html'">Daily entry system</button>
       <button class="secondary" onclick="window.location.href='bills.html'">Bills / Payments</button>
-      <button onclick="acsLogout()" class="secondary">Logout</button>
     </div>
 
     <!-- ✅ Share row -->
@@ -190,28 +192,64 @@
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
-<script>
-  const CUSTOMERS_KEY = "acsCustomers";
+
+<!-- ✅ Auth/session -->
+<script type="module" src="auth-guard.js"></script>
+<script type="module" src="session.js"></script>
+<script type="module" src="session-lock.js"></script>
+<script type="module" src="session-heartbeat.js"></script>
+<script type="module" src="logout.js"></script>
+
+<script type="module">
+  import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-auth.js";
+  import { listCustomers } from "./db-customers.js";
+  import { listEntriesInRange, upsertEntry, deleteEntry } from "./db-entries.js";
+
+  const auth = getAuth();
+
   const ACTIVE_KEY    = "acsActiveCustomerId";
+  const BILLS_KEY_PREFIX = "acsBills:"; // bills remain local per customer for now
 
-  function getActiveCustomerId() { return localStorage.getItem(ACTIVE_KEY); }
-  function getCustomers() {
-    try { return JSON.parse(localStorage.getItem(CUSTOMERS_KEY)) || []; } catch { return []; }
+  function getActiveCustomerId(){ try { return localStorage.getItem(ACTIVE_KEY) || ""; } catch { return ""; } }
+  function getBillsKey(customerId){ return BILLS_KEY_PREFIX + customerId; }
+  function getBills(customerId){
+    try {
+      const raw = localStorage.getItem(getBillsKey(customerId));
+      return raw ? JSON.parse(raw) : [];
+    } catch {
+      return [];
+    }
   }
-  function getActiveCustomer() {
-    const id = getActiveCustomerId();
-    return getCustomers().find(c => c.customerId === id) || null;
+  function setBills(customerId, bills){
+    try { localStorage.setItem(getBillsKey(customerId), JSON.stringify(bills)); } catch {}
   }
 
-  const customerId = getActiveCustomerId();
-  if (!customerId) window.location.href = "customers.html";
+  function statusFromAmounts(bill) {
+    const total = bill.total || 0;
+    const paid  = bill.paid  || 0;
+    if (total <= 0) return "pending";
+    if (paid <= 0) return "pending";
+    if (paid < total) return "loading";
+    return "success";
+  }
 
-  const ENTRIES_KEY = `acsEntries:${customerId}`;
-  const BILLS_KEY   = `acsBills:${customerId}`;
+  function isLockedDate(customerId, dateIso) {
+    const bills = getBills(customerId);
+    return bills.some(b => {
+      if (!b.from || !b.to) return false;
+      if (!(b.from <= dateIso && dateIso <= b.to)) return false;
+      const s = statusFromAmounts(b);
+      return s === "loading" || s === "success";
+    });
+  }
+
+  function todayIso() {
+    const t = new Date();
+    return `${t.getFullYear()}-${String(t.getMonth()+1).padStart(2,"0")}-${String(t.getDate()).padStart(2,"0")}`;
+  }
 
   const acName = document.getElementById("acName");
   const acSub  = document.getElementById("acSub");
-
   const customerLine1 = document.getElementById("customerLine1");
 
   const fromDateInput = document.getElementById("fromDate");
@@ -231,76 +269,19 @@
   let lastExportFile = null;
   let lastExportFilename = null;
 
-  const activeCustomer = getActiveCustomer();
-
-  // ✅ NEW: sanitize phone for WhatsApp deep link
-  const customerPhoneDigits = activeCustomer && activeCustomer.phone
-    ? String(activeCustomer.phone).replace(/\D/g, "")
-    : "";
-
-  if (activeCustomer) {
-    // Banner: name + ONLY phone
-    acName.textContent = activeCustomer.displayName || "Unnamed customer";
-    acSub.textContent  = activeCustomer.phone ? `📞 ${activeCustomer.phone}` : "";
-
-    // Report image: Customer: Name (phone)
-    customerLine1.textContent =
-      `Customer: ${activeCustomer.displayName || "Unnamed"}`
-      + (activeCustomer.phone ? ` (${activeCustomer.phone})` : "");
-  } else {
-    acName.textContent = "Unknown customer";
-    acSub.textContent  = "";
-    customerLine1.textContent = "Customer: Unknown";
-  }
-
-  function todayIso() {
-    const t = new Date();
-    return `${t.getFullYear()}-${String(t.getMonth()+1).padStart(2,"0")}-${String(t.getDate()).padStart(2,"0")}`;
-  }
-  function applyDateLimits() {
-    const t = todayIso();
-    fromDateInput.max = t;
-    toDateInput.max = t;
-  }
-
-  function getStoredEntries() {
-    try { return JSON.parse(localStorage.getItem(ENTRIES_KEY)) || {}; } catch { return {}; }
-  }
-  function setStoredEntries(obj) {
-    localStorage.setItem(ENTRIES_KEY, JSON.stringify(obj));
-  }
-
-  function getBills() {
-    try { return JSON.parse(localStorage.getItem(BILLS_KEY)) || []; } catch { return []; }
-  }
-  function setBills(bills) {
-    localStorage.setItem(BILLS_KEY, JSON.stringify(bills));
-  }
-
-  function statusFromAmounts(bill) {
-    const total = bill.total || 0;
-    const paid  = bill.paid  || 0;
-    if (total <= 0) return "pending";
-    if (paid <= 0) return "pending";
-    if (paid < total) return "loading";
-    return "success";
-  }
-
-  function isLockedDate(dateIso) {
-    const bills = getBills();
-    return bills.some(b => {
-      if (!b.from || !b.to) return false;
-      if (!(b.from <= dateIso && dateIso <= b.to)) return false;
-      const s = statusFromAmounts(b);
-      return s === "loading" || s === "success";
-    });
-  }
+  let ACTIVE_CUSTOMER = null;
 
   function formatDateDisplay(d) {
     return d.toLocaleDateString("en-GB", { day: "2-digit", month: "long", year: "numeric" });
   }
   function formatDateShort(d) {
     return `${String(d.getDate()).padStart(2,"0")}-${String(d.getMonth()+1).padStart(2,"0")}-${d.getFullYear()}`;
+  }
+  function ddmmyyyyToIso(dateText) {
+    const parts = String(dateText).split("-");
+    if (parts.length !== 3) return null;
+    const [dd, mm, yyyy] = parts;
+    return `${yyyy}-${mm.padStart(2,"0")}-${dd.padStart(2,"0")}`;
   }
   function setDaysLabel(start, end) {
     const diff = Math.round((end - start) / 86400000) + 1;
@@ -316,7 +297,59 @@
     grandTotalCell.textContent = sum === 0 ? "0" : sum.toLocaleString("en-IN");
   }
 
-  function createRows() {
+  function safeFileNamePart(s) {
+    return String(s || "")
+      .trim()
+      .replace(/\s+/g, "_")
+      .replace(/[^a-zA-Z0-9_\-]/g, "");
+  }
+
+  function makeAutoFilename() {
+    // Rahul_Sharma_01-12-2025_to_09-12-2025.png
+    const name = ACTIVE_CUSTOMER && ACTIVE_CUSTOMER.displayName ? ACTIVE_CUSTOMER.displayName : "Customer";
+    const fromVal = fromDateInput.value; // YYYY-MM-DD
+    const toVal = toDateInput.value;
+
+    function toDDMMYYYY(iso) {
+      if (!iso || iso.split("-").length !== 3) return "NA";
+      const [y,m,d] = iso.split("-");
+      return `${d}-${m}-${y}`;
+    }
+
+    const fromTxt = toDDMMYYYY(fromVal);
+    const toTxt = toDDMMYYYY(toVal);
+    return `${safeFileNamePart(name)}_${fromTxt}_to_${toTxt}.png`;
+  }
+
+  function applyDateLimits() {
+    const t = todayIso();
+    fromDateInput.max = t;
+    toDateInput.max = t;
+  }
+
+  async function getActiveCustomer(){
+    const id = getActiveCustomerId();
+    if (!id) return null;
+    const customers = await listCustomers();
+    return (customers || []).find(c => c.customerId === id) || null;
+  }
+
+  // ==============================
+  // ✅ CLOUD: load entries in range
+  // ==============================
+  async function loadEntriesMap(customerId, fromIso, toIso) {
+    const rows = await listEntriesInRange(customerId, fromIso, toIso);
+    const map = {};
+    (rows || []).forEach(r => {
+      if (r && r.dateIso) map[r.dateIso] = r;
+    });
+    return map;
+  }
+
+  async function createRows() {
+    const customerId = getActiveCustomerId();
+    if (!customerId) return (window.location.href = "customers.html");
+
     const fromVal = fromDateInput.value;
     const toVal = toDateInput.value;
 
@@ -329,10 +362,12 @@
     const start = new Date(fromVal);
     const end = new Date(toVal);
 
-    const storedEntries = getStoredEntries();
-    entriesBody.innerHTML = "";
+    // ✅ Fetch entries from Firestore for this customer + range
+    const entriesMap = await loadEntriesMap(customerId, fromVal, toVal);
 
+    entriesBody.innerHTML = "";
     let d = new Date(start);
+
     const defaultRate = parseFloat(defaultRateInput.value);
     const useDefaultRate = !isNaN(defaultRate);
 
@@ -359,18 +394,19 @@
       rateInput.step = "0.01";
 
       const isoKey = d.toISOString().slice(0,10);
-      const saved = storedEntries[isoKey];
+      const saved = entriesMap[isoKey];
 
       if (saved) {
-        kgInput.value = saved.kg;
-        rateInput.value = saved.rate;
-        const rowTotal = saved.kg * saved.rate;
+        kgInput.value = saved.kg ?? "";
+        rateInput.value = saved.rate ?? "";
+        const rowTotal = Number(saved.kg || 0) * Number(saved.rate || 0);
         totalTd.textContent = rowTotal === 0 ? "0" : rowTotal.toFixed(0);
       } else if (useDefaultRate) {
         rateInput.value = defaultRate.toString();
       }
 
-      if (isLockedDate(isoKey)) {
+      // locking from bills (local)
+      if (isLockedDate(customerId, isoKey)) {
         kgInput.disabled = true;
         rateInput.disabled = true;
         kgInput.title = "Locked (payment started)";
@@ -422,22 +458,18 @@
     updateGrandTotal();
   }
 
-  function ddmmyyyyToIso(dateText) {
-    const parts = String(dateText).split("-");
-    if (parts.length !== 3) return null;
-    const [dd, mm, yyyy] = parts;
-    return `${yyyy}-${mm.padStart(2,"0")}-${dd.padStart(2,"0")}`;
-  }
-
-  function syncReportEditsToDailyEntries() {
-    const stored = getStoredEntries();
+  // =====================================
+  // ✅ CLOUD: sync report edits to Firestore
+  // =====================================
+  async function syncReportEditsToCloudEntries(customerId) {
     const t = todayIso();
 
+    const ops = [];
     entriesBody.querySelectorAll("tr").forEach(tr => {
       const isoKey = ddmmyyyyToIso(tr.children[2].textContent.trim());
       if (!isoKey) return;
       if (isoKey > t) return;
-      if (isLockedDate(isoKey)) return;
+      if (isLockedDate(customerId, isoKey)) return;
 
       const kgInput = tr.querySelector("input[placeholder='kg']");
       const rateInput = tr.querySelector("input[placeholder='rate']");
@@ -445,36 +477,27 @@
       const rate = rateInput ? parseFloat(rateInput.value) : NaN;
 
       const valid = !isNaN(kg) && !isNaN(rate) && kg > 0 && rate > 0;
-      if (valid) stored[isoKey] = { kg, rate };
-      else if (stored[isoKey]) delete stored[isoKey];
+
+      if (valid) ops.push(upsertEntry(customerId, isoKey, { kg, rate }));
+      else ops.push(deleteEntry(customerId, isoKey).catch(()=>true)); // ignore if not exists
     });
 
-    setStoredEntries(stored);
+    await Promise.all(ops);
   }
 
-  function recomputeBillTotal(rangeFrom, rangeTo, entries) {
-    let sum = 0;
-    for (let d = new Date(rangeFrom); d <= new Date(rangeTo); d.setDate(d.getDate()+1)) {
-      const iso = d.toISOString().slice(0,10);
-      const e = entries[iso];
-      if (e) {
-        const kg = parseFloat(e.kg);
-        const rate = parseFloat(e.rate);
-        if (!isNaN(kg) && !isNaN(rate)) sum += kg * rate;
-      }
-    }
-    return sum;
-  }
-
-  function upsertBillForCurrentRange() {
+  function upsertBillForCurrentRange(customerId) {
     const fromVal = fromDateInput.value;
     const toVal = toDateInput.value;
     if (!fromVal || !toVal) return;
 
-    const bills = getBills();
-    const entries = getStoredEntries();
-    const total = recomputeBillTotal(fromVal, toVal, entries);
+    // total from current table (after edits)
+    let total = 0;
+    entriesBody.querySelectorAll("tr").forEach(tr => {
+      const val = parseFloat(tr.children[0].textContent.replace(/,/g, ""));
+      if (!isNaN(val)) total += val;
+    });
 
+    const bills = getBills(customerId);
     const idx = bills.findIndex(b => b.from === fromVal && b.to === toVal);
 
     if (idx === -1) {
@@ -488,10 +511,11 @@
         status: "pending",
         createdAt: new Date().toISOString()
       });
-      setBills(bills);
+      setBills(customerId, bills);
       return;
     }
 
+    // update only if still pending
     const bill = bills[idx];
     const stage = statusFromAmounts(bill);
     if (stage !== "pending") return;
@@ -499,31 +523,7 @@
     bill.total = total;
     bill.status = statusFromAmounts(bill);
     bills[idx] = bill;
-    setBills(bills);
-  }
-
-  function safeFileNamePart(s) {
-    return String(s || "")
-      .trim()
-      .replace(/\s+/g, "_")
-      .replace(/[^a-zA-Z0-9_\-]/g, "");
-  }
-
-  function makeAutoFilename() {
-    const name = activeCustomer && activeCustomer.displayName ? activeCustomer.displayName : "Customer";
-    const fromVal = fromDateInput.value;
-    const toVal = toDateInput.value;
-
-    function toDDMMYYYY(iso) {
-      if (!iso || iso.split("-").length !== 3) return "NA";
-      const [y,m,d] = iso.split("-");
-      return `${d}-${m}-${y}`;
-    }
-
-    const fromTxt = toDDMMYYYY(fromVal);
-    const toTxt = toDDMMYYYY(toVal);
-
-    return `${safeFileNamePart(name)}_${fromTxt}_to_${toTxt}.png`;
+    setBills(customerId, bills);
   }
 
   function buildExportCard() {
@@ -532,6 +532,7 @@
     clone.classList.add("export-card");
     document.body.appendChild(clone);
 
+    // Replace inputs with text
     const cloneTbody = clone.querySelector("tbody");
     const cloneRows = cloneTbody.querySelectorAll("tr");
     const originalRows = entriesBody.querySelectorAll("tr");
@@ -557,28 +558,26 @@
   }
 
   async function generateImageFile() {
+    const customerId = getActiveCustomerId();
+    if (!customerId) return null;
     if (summaryCard.style.display === "none") return null;
 
-    // Sync edits + bill
-    syncReportEditsToDailyEntries();
-    upsertBillForCurrentRange();
+    // ✅ Sync edits to cloud + update bill total (pending only)
+    await syncReportEditsToCloudEntries(customerId);
+    upsertBillForCurrentRange(customerId);
 
     const exportCard = buildExportCard();
     const canvas = await html2canvas(exportCard, { scale: 3, backgroundColor: "#ffffff" });
     document.body.removeChild(exportCard);
 
     const filename = makeAutoFilename();
-
     const blob = await new Promise(resolve => canvas.toBlob(resolve, "image/png", 1.0));
     if (!blob) return null;
 
     const file = new File([blob], filename, { type: "image/png" });
-
     lastExportFile = file;
     lastExportFilename = filename;
-
     whatsappBtn.disabled = false;
-
     return file;
   }
 
@@ -594,25 +593,17 @@
     URL.revokeObjectURL(url);
   }
 
-  // ✅ UPDATED WHATSAPP LOGIC (fully integrated)
   async function sendOnWhatsApp() {
-    // Ensure file exists
     if (!lastExportFile) {
       const f = await generateImageFile();
       if (!f) return;
     }
 
-    // 1) BEST: Share sheet with file (WhatsApp will appear; usually avoids selecting number manually)
     try {
       if (navigator.canShare && navigator.canShare({ files: [lastExportFile] })) {
-        const msgText =
-          `તમારો રિપોર્ટ કાર્ડ તૈયાર છે.\n` +
-          `${activeCustomer?.displayName ? "Customer: " + activeCustomer.displayName + "\n" : ""}` +
-          `${fromDateInput.value && toDateInput.value ? "Range: " + fromDateInput.value + " to " + toDateInput.value : ""}`;
-
         await navigator.share({
           title: "Report Card",
-          text: msgText,
+          text: "Here is your report card image.",
           files: [lastExportFile]
         });
         return;
@@ -621,34 +612,42 @@
       console.error("Share failed", e);
     }
 
-    // 2) FALLBACK: Open WhatsApp DIRECTLY to customer's chat (eliminates number selection step)
     const msg = encodeURIComponent(
-      `તમારો રિપોર્ટ કાર્ડ તૈયાર છે.\n` +
-      `File: ${lastExportFilename || "report-card.png"}`
+      `Report ready: ${lastExportFilename || "report-card.png"}\n(If image not attached automatically, please send the downloaded image.)`
     );
-
-    if (customerPhoneDigits) {
-      // opens specific chat
-      window.open(`https://wa.me/91${customerPhoneDigits}?text=${msg}`, "_blank");
-      alert("WhatsApp opened to the customer. Attach the image (if not auto-shared) and press Send.");
-      return;
-    }
-
-    // 3) LAST fallback: generic WhatsApp open
     window.open(`https://wa.me/?text=${msg}`, "_blank");
-    alert("Customer phone not available. WhatsApp opened—please choose contact and send.");
+    alert("Your browser may not support sharing image directly. The image is saved—attach it in WhatsApp manually.");
   }
 
   generateRowsBtn.addEventListener("click", createRows);
   downloadImgBtn.addEventListener("click", downloadImage);
   whatsappBtn.addEventListener("click", sendOnWhatsApp);
 
-  applyDateLimits();
+  onAuthStateChanged(auth, async (user) => {
+    if (!user) return;
+
+    const customerId = getActiveCustomerId();
+    if (!customerId) {
+      window.location.href = "customers.html";
+      return;
+    }
+
+    ACTIVE_CUSTOMER = await getActiveCustomer();
+
+    if (ACTIVE_CUSTOMER) {
+      acName.textContent = ACTIVE_CUSTOMER.displayName || "Unnamed customer";
+      acSub.textContent  = ACTIVE_CUSTOMER.phone ? `📞 ${ACTIVE_CUSTOMER.phone}` : "";
+      customerLine1.textContent =
+        `Customer: ${ACTIVE_CUSTOMER.displayName || "Unnamed"}`
+        + (ACTIVE_CUSTOMER.phone ? ` (${ACTIVE_CUSTOMER.phone})` : "");
+    } else {
+      acName.textContent = "Unknown customer";
+      acSub.textContent  = "";
+      customerLine1.textContent = "Customer: Unknown";
+    }
+
+    applyDateLimits();
+  });
 </script>
-  <script type="module" src="auth-guard.js"></script>
-  <script type="module" src="session.js"></script>
-  <script type="module" src="logout.js"></script>
-  <script type="module" src="session-lock.js"></script>
-  <script type="module" src="session-heartbeat.js"></script>
 </body>
 </html>
