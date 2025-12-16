@@ -284,24 +284,24 @@
 
 </div>
 
-<!-- ===== Modal Add Customer ===== -->
+<!-- ===== Modal Add/Edit Customer ===== -->
 <div class="modal-backdrop" id="modalBackdrop" aria-hidden="true">
   <div class="modal" role="dialog" aria-modal="true">
     <div class="modal-head">
-      <div class="modal-title">Add Customer</div>
+      <div class="modal-title" id="modalTitle">Add Customer</div>
       <button class="modal-close" id="closeModalBtn">✕</button>
     </div>
 
     <div class="modal-body">
       <div class="field">
         <label>Customer Name</label>
-        <input id="custName" class="modal-in" placeholder="e.g. Iqbal Gata" />
+        <input id="custName" class="modal-in" placeholder="e.g. Rahul Sharma" />
       </div>
 
       <div class="field">
         <label>Customer Phone</label>
-        <input id="custPhone" class="modal-in" placeholder="e.g. 1234567890" inputmode="numeric" />
-        <div class="note">Tip: enter digits only. Same name + same phone cannot be added twice.</div>
+        <input id="custPhone" class="modal-in" placeholder="e.g. 9876543210" inputmode="numeric" />
+        <div class="note">Same name + same phone cannot be saved twice.</div>
       </div>
     </div>
 
@@ -326,8 +326,6 @@
   const auth = getAuth();
 
   const ACTIVE_KEY = "acsActiveCustomerId";
-  const CUSTOMERS_LOCAL_KEY = "acsCustomers";
-  const MIGRATED_KEY = "acs:migratedCustomersToCloud";
 
   const activePill = document.getElementById("activePill");
   const msgEl = document.getElementById("msg");
@@ -335,7 +333,6 @@
   const emptyEl = document.getElementById("empty");
   const refreshBtn = document.getElementById("refreshBtn");
   const logoutBtn = document.getElementById("logoutBtn");
-
   const searchInput = document.getElementById("searchInput");
 
   // Modal
@@ -344,10 +341,12 @@
   const closeModalBtn = document.getElementById("closeModalBtn");
   const cancelBtn = document.getElementById("cancelBtn");
   const saveBtn = document.getElementById("saveBtn");
+  const modalTitle = document.getElementById("modalTitle");
   const custName = document.getElementById("custName");
   const custPhone = document.getElementById("custPhone");
 
   let allCustomers = [];
+  let editingCustomerId = null; // null => add mode
 
   function showMsg(text, type){
     msgEl.textContent = text || "";
@@ -360,11 +359,9 @@
       .toLowerCase()
       .replace(/\s+/g, " ");
   }
-
   function normalizePhone(s){
     return String(s || "").replace(/\D/g, "");
   }
-
   function safeIdPart(s){
     return String(s || "")
       .trim()
@@ -372,9 +369,7 @@
       .replace(/\s+/g, "_")
       .replace(/[^a-z0-9_]/g, "");
   }
-
   function genCustomerId(name, phoneDigits){
-    // Unique enough + readable
     return `CUST_${safeIdPart(name) || "customer"}_${phoneDigits || "no"}_${Date.now().toString(36)}`;
   }
 
@@ -385,19 +380,35 @@
     try { localStorage.setItem(ACTIVE_KEY, id); } catch {}
   }
 
-  function openModal(){
+  function openModalAdd(){
+    editingCustomerId = null;
+    modalTitle.textContent = "Add Customer";
+    custName.value = "";
+    custPhone.value = "";
     modalBackdrop.style.display = "flex";
     modalBackdrop.setAttribute("aria-hidden", "false");
     custName.focus();
   }
+
+  function openModalEdit(customer){
+    editingCustomerId = customer.customerId;
+    modalTitle.textContent = "Edit Customer";
+    custName.value = customer.displayName || "";
+    custPhone.value = customer.phone || "";
+    modalBackdrop.style.display = "flex";
+    modalBackdrop.setAttribute("aria-hidden", "false");
+    custName.focus();
+  }
+
   function closeModal(){
     modalBackdrop.style.display = "none";
     modalBackdrop.setAttribute("aria-hidden", "true");
+    editingCustomerId = null;
     custName.value = "";
     custPhone.value = "";
   }
 
-  openAddBtn.addEventListener("click", openModal);
+  openAddBtn.addEventListener("click", openModalAdd);
   closeModalBtn.addEventListener("click", closeModal);
   cancelBtn.addEventListener("click", closeModal);
   modalBackdrop.addEventListener("click", (e) => {
@@ -412,44 +423,7 @@
     activePill.textContent = "Active: " + (active ? (active.displayName || "Unnamed") : "—");
   }
 
-  async function migrateLocalCustomersOnce(){
-    let migrated = false;
-    try { migrated = localStorage.getItem(MIGRATED_KEY) === "1"; } catch {}
-    if (migrated) return;
-
-    let local = [];
-    try { local = JSON.parse(localStorage.getItem(CUSTOMERS_LOCAL_KEY) || "[]") || []; } catch { local = []; }
-    if (!Array.isArray(local) || local.length === 0) {
-      try { localStorage.setItem(MIGRATED_KEY, "1"); } catch {}
-      return;
-    }
-
-    for (const c of local) {
-      const displayName = (c.displayName || c.name || c.customerName || "").trim();
-      const phone = String(c.phone || c.mobile || "").trim();
-      const phoneDigits = normalizePhone(phone);
-      if (!displayName) continue;
-
-      const customerId = c.customerId || genCustomerId(displayName, phoneDigits);
-
-      await upsertCustomer({
-        customerId,
-        displayName,
-        normalizedName: normalizeName(displayName),
-        phone: phoneDigits
-      });
-
-      // keep active mapping if same id
-      if (getActiveId() === c.customerId && c.customerId !== customerId) {
-        setActiveId(customerId);
-      }
-    }
-
-    try { localStorage.setItem(MIGRATED_KEY, "1"); } catch {}
-  }
-
   function sortCustomers(list){
-    // lastVisited first; then createdAtMs; then name
     return [...list].sort((a,b) => {
       const av = a.lastVisitedMs || 0;
       const bv = b.lastVisitedMs || 0;
@@ -474,7 +448,6 @@
       updateActivePill();
       return;
     }
-
     emptyEl.textContent = "";
 
     list.forEach(c => {
@@ -503,17 +476,16 @@
       selectBtn.textContent = "Select";
       selectBtn.addEventListener("click", async () => {
         setActiveId(c.customerId);
-
-        // ✅ mark as last visited (so it appears first)
         try {
-          await upsertCustomer({
-            customerId: c.customerId,
-            lastVisitedMs: Date.now()
-          });
+          await upsertCustomer({ customerId: c.customerId, lastVisitedMs: Date.now() });
         } catch {}
-
         window.location.href = "index.html";
       });
+
+      const editBtn = document.createElement("button");
+      editBtn.className = "mini";
+      editBtn.textContent = "Edit";
+      editBtn.addEventListener("click", () => openModalEdit(c));
 
       const delBtn = document.createElement("button");
       delBtn.className = "mini danger";
@@ -527,16 +499,15 @@
         if (getActiveId() === c.customerId) {
           try { localStorage.removeItem(ACTIVE_KEY); } catch {}
         }
-
         await load();
       });
 
       right.appendChild(selectBtn);
+      right.appendChild(editBtn);
       right.appendChild(delBtn);
 
       item.appendChild(left);
       item.appendChild(right);
-
       listEl.appendChild(item);
     });
 
@@ -544,13 +515,8 @@
   }
 
   function applySearch(){
-    const qRaw = searchInput.value || "";
-    const q = qRaw.trim().toLowerCase();
-
-    if (!q) {
-      render(sortCustomers(allCustomers));
-      return;
-    }
+    const q = (searchInput.value || "").trim().toLowerCase();
+    if (!q) return render(sortCustomers(allCustomers));
 
     const filtered = allCustomers.filter(c => {
       const name = (c.displayName || "").toLowerCase();
@@ -560,7 +526,6 @@
 
     render(sortCustomers(filtered));
   }
-
   searchInput.addEventListener("input", applySearch);
 
   async function load(){
@@ -569,14 +534,13 @@
       showMsg("", "");
       const customers = await listCustomers();
       allCustomers = Array.isArray(customers) ? customers : [];
-      render(sortCustomers(allCustomers));
+      applySearch(); // renders sorted
     } catch (e) {
       console.error(e);
       emptyEl.textContent = "Failed to load customers. Check login / Firestore rules.";
       showMsg("❌ Could not load customers from cloud.", "err");
     }
   }
-
   refreshBtn.addEventListener("click", load);
 
   saveBtn.addEventListener("click", async () => {
@@ -589,35 +553,50 @@
     showMsg("Saving…", "");
 
     try {
-      // Load current list (to detect duplicates)
       const current = await listCustomers();
       const nName = normalizeName(name);
 
-      const duplicate = (current || []).find(c =>
-        (c.normalizedName || normalizeName(c.displayName || "")) === nName &&
-        normalizePhone(c.phone || "") === phoneDigits
-      );
+      // ✅ duplicate check (ignore self when editing)
+      const dup = (current || []).find(c => {
+        if (editingCustomerId && c.customerId === editingCustomerId) return false;
+        const cn = (c.normalizedName || normalizeName(c.displayName || ""));
+        const cp = normalizePhone(c.phone || "");
+        return cn === nName && cp === phoneDigits;
+      });
 
-      if (duplicate) {
-        showMsg("⚠️ This customer already exists (same name + phone).", "err");
+      if (dup) {
+        showMsg("⚠️ Duplicate found (same name + phone).", "err");
         saveBtn.disabled = false;
         return;
       }
 
-      const customerId = genCustomerId(name, phoneDigits);
+      if (!editingCustomerId) {
+        // ADD
+        const customerId = genCustomerId(name, phoneDigits);
+        await upsertCustomer({
+          customerId,
+          displayName: name,
+          normalizedName: nName,
+          phone: phoneDigits,
+          createdAtMs: Date.now(),
+          lastVisitedMs: Date.now()
+        });
+        closeModal();
+        showMsg("✅ Customer saved.", "ok");
+        await load();
+        return;
+      }
 
+      // EDIT
       await upsertCustomer({
-        customerId,
+        customerId: editingCustomerId,
         displayName: name,
         normalizedName: nName,
-        phone: phoneDigits,
-        createdAtMs: Date.now(),
-        lastVisitedMs: Date.now()
+        phone: phoneDigits
       });
 
       closeModal();
-      showMsg("✅ Customer saved.", "ok");
-
+      showMsg("✅ Customer updated.", "ok");
       await load();
     } catch (e) {
       console.error(e);
@@ -627,10 +606,8 @@
     }
   });
 
-  // ✅ Fix "empty until refresh": wait for auth to be ready, then load automatically
   onAuthStateChanged(auth, async (user) => {
-    if (!user) return; // auth-guard should redirect
-    await migrateLocalCustomersOnce();
+    if (!user) return;
     await load();
   });
 </script>
