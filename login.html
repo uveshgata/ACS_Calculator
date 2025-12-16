@@ -206,38 +206,54 @@
     }
 
     async function establishSingleDeviceSession(user){
-      const uid = user.uid;
-      const deviceId = getOrCreateDeviceId();
-      const sessionRef = doc(db, "admins", uid, "meta", "session");
+  const uid = user.uid;
+  const deviceId = getOrCreateDeviceId();
+  const sessionRef = doc(db, "admins", uid, "meta", "session");
 
-      const snap = await getDoc(sessionRef);
-      const data = snap.exists() ? snap.data() : null;
+  const snap = await getDoc(sessionRef);
+  const data = snap.exists() ? snap.data() : null;
 
-      // If another device is active, confirm kick
-      if (data && data.deviceId && data.deviceId !== deviceId && data.token) {
-        const ok = confirm(
-          "This admin is already logged in on another device.\n\n" +
-          "Do you want to logout the other device and continue here?"
-        );
+  // ✅ consider session dead if heartbeat older than 20 seconds
+  const STALE_MS = 20 * 1000;
+  const now = Date.now();
 
-        if (!ok) {
-          await signOut(auth);
-          showMsg("Login cancelled. Other device remains logged in.", "err");
-          return false;
-        }
-      }
+  let isStale = true;
+  if (data && data.updatedAt && data.updatedAt.toMillis) {
+    const lastBeat = data.updatedAt.toMillis();
+    isStale = (now - lastBeat) > STALE_MS;
+  }
 
-      // New session token (this device becomes active)
-      const newToken = genId();
-      await setDoc(sessionRef, {
-        token: newToken,
-        deviceId: deviceId,
-        updatedAt: serverTimestamp()
-      }, { merge: true });
+  // If another device is active AND not stale → ask confirmation
+  if (
+    data &&
+    data.deviceId &&
+    data.deviceId !== deviceId &&
+    data.token &&
+    !isStale
+  ) {
+    const ok = confirm(
+      "This admin is already logged in on another device.\n\n" +
+      "Do you want to logout the other device and continue here?"
+    );
 
-      setLocalSessionToken(newToken);
-      return true;
+    if (!ok) {
+      await signOut(auth);
+      showMsg("Login cancelled. Other device remains logged in.", "err");
+      return false;
     }
+  }
+
+  // ✅ New session becomes authoritative
+  const newToken = genId();
+  await setDoc(sessionRef, {
+    token: newToken,
+    deviceId: deviceId,
+    updatedAt: serverTimestamp()
+  }, { merge: true });
+
+  setLocalSessionToken(newToken);
+  return true;
+}
 
     // ✅ ONLY place that redirects + session lock (prevents double confirm)
     onAuthStateChanged(auth, async (user) => {
