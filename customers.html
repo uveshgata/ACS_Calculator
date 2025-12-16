@@ -17,21 +17,63 @@
 
   <style>
     body{
-      margin:0;
-      padding:16px;
+      margin:0; padding:16px;
       font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
       background: radial-gradient(circle at top, #eef2ff, #e5e7eb);
-      display:flex;
-      justify-content:center;
+      display:flex; justify-content:center;
     }
-    .wrapper{ width:100%; max-width:560px; }
+    .wrapper{ width:100%; max-width:640px; }
+
+    .topbar{
+      display:flex; align-items:center; justify-content:space-between; gap:10px;
+      margin-bottom:12px;
+    }
     h1{
-      margin:0 0 12px;
-      text-align:center;
+      margin:0;
       font-size:22px;
+      font-weight:1000;
+      color:#111827;
+      letter-spacing:.01em;
+    }
+
+    .pill{
+      display:inline-flex; align-items:center; gap:8px;
+      padding:8px 12px;
+      border-radius:999px;
+      background:#ffffff;
+      border:1px solid #e5e7eb;
+      box-shadow: 0 8px 18px rgba(0,0,0,0.06);
       font-weight:900;
       color:#111827;
+      font-size:13px;
+      white-space:nowrap;
     }
+
+    .actions-row{
+      display:flex; gap:10px; flex-wrap:wrap;
+      margin-bottom:12px;
+    }
+    .btn{
+      border:none; border-radius:999px;
+      padding:10px 14px;
+      font-size:14px;
+      font-weight:900;
+      cursor:pointer;
+      transition:.15s;
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      gap:8px;
+    }
+    .btn.primary{
+      background: linear-gradient(135deg, #4f46e5, #7c3aed);
+      color:#fff;
+      box-shadow: 0 10px 22px rgba(88,80,236,0.35);
+    }
+    .btn.secondary{ background:#e5e7eb; color:#111827; }
+    .btn.danger{ background:#fee2e2; color:#b91c1c; }
+    .btn:disabled{ opacity:.55; cursor:not-allowed; box-shadow:none; }
+
     .card{
       background:#fff;
       border:1px solid #e5e7eb;
@@ -40,363 +82,557 @@
       box-shadow: 0 10px 24px rgba(0,0,0,0.08);
       margin-bottom:12px;
     }
-    .row{ display:flex; gap:10px; flex-wrap:wrap; }
-    .field{ flex:1 1 200px; }
-    label{
-      display:block;
-      font-size:13px;
-      font-weight:800;
-      color:#374151;
-      margin-bottom:6px;
+
+    .search-row{
+      display:flex; gap:10px; align-items:center; flex-wrap:wrap;
     }
-    input{
-      width:100%;
+    .search{
+      flex:1 1 240px;
       padding:10px 12px;
-      border-radius:12px;
+      border-radius:14px;
       border:1px solid #d1d5db;
       font-size:14px;
       outline:none;
       transition:.15s;
       background:#fff;
+      font-weight:700;
     }
-    input:focus{
+    .search:focus{
       border-color:#6366f1;
-      box-shadow:0 0 0 3px rgba(99,102,241,.25);
+      box-shadow:0 0 0 3px rgba(99,102,241,.20);
     }
-
-    .btn{
-      border:none;
-      border-radius:999px;
-      padding:10px 14px;
-      font-size:14px;
-      font-weight:900;
-      cursor:pointer;
-      transition:.15s;
-      width:100%;
-    }
-    .btn.primary{
-      background: linear-gradient(135deg, #4f46e5, #7c3aed);
-      color:#fff;
-      box-shadow: 0 10px 22px rgba(88,80,236,0.35);
-    }
-    .btn.secondary{ background:#e5e7eb; color:#111827; font-weight:800; }
-    .btn.danger{ background:#fee2e2; color:#b91c1c; }
-    .btn:disabled{ opacity:.55; cursor:not-allowed; box-shadow:none; }
-
-    .top-actions{
-      display:flex;
-      gap:10px;
-      flex-wrap:wrap;
-      margin-bottom:12px;
-    }
-    .top-actions .btn{ flex:1 1 160px; }
 
     .msg{
-      margin-top:8px;
+      margin-top:10px;
       font-size:13px;
-      font-weight:900;
+      font-weight:1000;
       text-align:center;
       word-break:break-word;
     }
     .msg.ok{ color:#047857; }
     .msg.err{ color:#b91c1c; }
 
-    .list{ display:flex; flex-direction:column; gap:8px; }
+    .list{ display:flex; flex-direction:column; gap:8px; margin-top:12px; }
     .item{
       background:#f9fafb;
       border:1px solid #e5e7eb;
-      border-radius:14px;
-      padding:10px 12px;
+      border-radius:16px;
+      padding:12px 12px;
       display:flex;
       justify-content:space-between;
-      gap:10px;
       align-items:center;
+      gap:10px;
     }
     .item.active{
       border-color:#4f46e5;
-      box-shadow: 0 6px 18px rgba(79,70,229,0.18);
+      box-shadow: 0 8px 20px rgba(79,70,229,0.16);
+      background: linear-gradient(180deg, #f7f7ff, #fbfbff);
     }
     .left{ min-width:0; }
     .name{
-      font-size:14px;
-      font-weight:900;
+      font-size:15px;
+      font-weight:1000;
       color:#111827;
       white-space:nowrap;
       overflow:hidden;
       text-overflow:ellipsis;
-      max-width:320px;
+      max-width:360px;
     }
     .sub{
+      margin-top:2px;
       font-size:12px;
       color:#6b7280;
-      margin-top:2px;
+      font-weight:800;
       white-space:nowrap;
       overflow:hidden;
       text-overflow:ellipsis;
-      max-width:320px;
+      max-width:360px;
     }
-    .actions{
-      display:flex;
-      gap:8px;
-      flex-wrap:wrap;
-      justify-content:flex-end;
+    .right{
+      display:flex; gap:8px; align-items:center; flex-wrap:wrap; justify-content:flex-end;
     }
-    .actions button{
+    .mini{
       border:none;
       border-radius:999px;
-      padding:7px 10px;
+      padding:8px 10px;
       font-size:12px;
-      font-weight:900;
+      font-weight:1000;
       cursor:pointer;
       background:#e5e7eb;
       color:#111827;
     }
-    .actions button.danger{ background:#fee2e2; color:#b91c1c; }
+    .mini.danger{ background:#fee2e2; color:#b91c1c; }
+
+    .empty{
+      margin-top:12px;
+      text-align:center;
+      color:#6b7280;
+      font-weight:900;
+      font-size:13px;
+    }
+
+    /* ===== Modal ===== */
+    .modal-backdrop{
+      position:fixed; inset:0;
+      background: rgba(17,24,39,.45);
+      display:none;
+      align-items:center;
+      justify-content:center;
+      padding:16px;
+      z-index:999;
+    }
+    .modal{
+      width:100%;
+      max-width:520px;
+      background:#fff;
+      border-radius:18px;
+      border:1px solid #e5e7eb;
+      box-shadow: 0 18px 45px rgba(0,0,0,0.22);
+      overflow:hidden;
+    }
+    .modal-head{
+      padding:14px 14px 10px;
+      background: linear-gradient(135deg, rgba(79,70,229,.10), rgba(124,58,237,.10));
+      border-bottom:1px solid #e5e7eb;
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      gap:10px;
+    }
+    .modal-title{
+      font-size:15px;
+      font-weight:1000;
+      color:#111827;
+      margin:0;
+    }
+    .modal-close{
+      border:none;
+      border-radius:10px;
+      padding:8px 10px;
+      background:#e5e7eb;
+      font-weight:1000;
+      cursor:pointer;
+    }
+    .modal-body{
+      padding:14px;
+    }
+    .field{ margin-bottom:10px; }
+    label{
+      display:block;
+      font-size:13px;
+      font-weight:900;
+      color:#374151;
+      margin-bottom:6px;
+    }
+    input.modal-in{
+      width:100%;
+      padding:10px 12px;
+      border-radius:14px;
+      border:1px solid #d1d5db;
+      font-size:14px;
+      outline:none;
+      transition:.15s;
+      background:#fff;
+      font-weight:700;
+    }
+    input.modal-in:focus{
+      border-color:#6366f1;
+      box-shadow:0 0 0 3px rgba(99,102,241,.20);
+    }
+    .modal-foot{
+      padding:12px 14px 14px;
+      border-top:1px solid #e5e7eb;
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+    }
+    .note{
+      font-size:12px;
+      color:#6b7280;
+      font-weight:700;
+      margin-top:6px;
+      line-height:1.4;
+    }
   </style>
 </head>
 
 <body>
-  <div class="wrapper">
+<div class="wrapper">
+
+  <div class="topbar">
     <h1>Customers</h1>
-
-    <div class="top-actions">
-      <button class="btn secondary" onclick="window.location.href='index.html'">← Back to Report</button>
-      <button class="btn danger" id="logoutBtn">Logout</button>
-    </div>
-
-    <div class="card">
-      <div style="font-weight:900; color:#111827; margin-bottom:10px;">Add customer</div>
-
-      <div class="row">
-        <div class="field">
-          <label>Customer Name</label>
-          <input id="custName" placeholder="e.g. Iqbal Gata" />
-        </div>
-        <div class="field">
-          <label>Customer Phone</label>
-          <input id="custPhone" placeholder="e.g. 1234567890" inputmode="numeric" />
-        </div>
-      </div>
-
-      <button class="btn primary" id="addBtn" style="margin-top:10px;">Save customer</button>
-      <div id="msg" class="msg"></div>
-    </div>
-
-    <div class="card">
-      <div style="display:flex; justify-content:space-between; align-items:center; gap:10px;">
-        <div style="font-weight:900; color:#111827;">Customer list</div>
-        <button class="btn secondary" id="refreshBtn" style="width:auto;">Refresh</button>
-      </div>
-
-      <div id="list" class="list" style="margin-top:10px;"></div>
-      <div id="empty" style="margin-top:10px; color:#6b7280; font-weight:800;">Loading…</div>
-    </div>
+    <div class="pill" id="activePill">Active: —</div>
   </div>
 
-  <!-- ✅ Protected page scripts -->
-  <script type="module" src="auth-guard.js"></script>
-  <script type="module" src="session.js"></script>
-  <script type="module" src="session-lock.js"></script>
-  <script type="module" src="session-heartbeat.js"></script>
-  <script type="module" src="logout.js"></script>
+  <div class="actions-row">
+    <button class="btn secondary" onclick="window.location.href='index.html'">← Back to Report</button>
+    <button class="btn primary" id="openAddBtn">+ Add Customer</button>
+    <button class="btn secondary" id="refreshBtn">Refresh</button>
+    <button class="btn danger" id="logoutBtn">Logout</button>
+  </div>
 
-  <script type="module">
-    import { listCustomers, upsertCustomer, removeCustomer } from "./db-customers.js";
+  <div class="card">
+    <div class="search-row">
+      <input id="searchInput" class="search" placeholder="Search customer name / phone…" />
+    </div>
 
-    const CUSTOMERS_LOCAL_KEY = "acsCustomers";            // old local customers
-    const MIGRATED_KEY = "acs:migratedCustomersToCloud";   // migration flag
-    const ACTIVE_KEY = "acsActiveCustomerId";              // active customer on this device
+    <div id="msg" class="msg"></div>
 
-    const custName = document.getElementById("custName");
-    const custPhone = document.getElementById("custPhone");
-    const addBtn = document.getElementById("addBtn");
-    const refreshBtn = document.getElementById("refreshBtn");
-    const msgEl = document.getElementById("msg");
-    const listEl = document.getElementById("list");
-    const emptyEl = document.getElementById("empty");
-    const logoutBtn = document.getElementById("logoutBtn");
+    <div id="list" class="list"></div>
+    <div id="empty" class="empty">Loading…</div>
+  </div>
 
-    logoutBtn.addEventListener("click", () => window.acsLogout && window.acsLogout());
+</div>
 
-    function showMsg(text, type){
-      msgEl.textContent = text || "";
-      msgEl.className = "msg " + (type || "");
-    }
+<!-- ===== Modal Add Customer ===== -->
+<div class="modal-backdrop" id="modalBackdrop" aria-hidden="true">
+  <div class="modal" role="dialog" aria-modal="true">
+    <div class="modal-head">
+      <div class="modal-title">Add Customer</div>
+      <button class="modal-close" id="closeModalBtn">✕</button>
+    </div>
 
-    function normalizeName(s){
-      return String(s || "")
-        .trim()
-        .toLowerCase()
-        .replace(/\s+/g, " ");
-    }
+    <div class="modal-body">
+      <div class="field">
+        <label>Customer Name</label>
+        <input id="custName" class="modal-in" placeholder="e.g. Rahul Sharma" />
+      </div>
 
-    function genCustomerId(name, phone){
-      // stable-ish unique id
-      const base = normalizeName(name).replace(/[^a-z0-9 ]/g, "").replace(/\s+/g, "_");
-      const p = String(phone || "").replace(/\D/g, "");
-      return `CUST_${base || "customer"}_${p || "no"}_${Date.now().toString(36)}`;
-    }
+      <div class="field">
+        <label>Customer Phone</label>
+        <input id="custPhone" class="modal-in" placeholder="e.g. 9876543210" inputmode="numeric" />
+        <div class="note">Tip: enter digits only. Same name + same phone cannot be added twice.</div>
+      </div>
+    </div>
 
-    function getActiveId(){
-      try { return localStorage.getItem(ACTIVE_KEY) || ""; } catch { return ""; }
-    }
-    function setActiveId(id){
-      try { localStorage.setItem(ACTIVE_KEY, id); } catch {}
-    }
+    <div class="modal-foot">
+      <button class="btn primary" id="saveBtn" style="flex:1 1 180px;">Save</button>
+      <button class="btn secondary" id="cancelBtn" style="flex:1 1 180px;">Cancel</button>
+    </div>
+  </div>
+</div>
 
-    async function migrateLocalCustomersOnce(){
-      let migrated = false;
-      try { migrated = localStorage.getItem(MIGRATED_KEY) === "1"; } catch {}
-      if (migrated) return;
+<!-- ✅ Protected page scripts -->
+<script type="module" src="auth-guard.js"></script>
+<script type="module" src="session.js"></script>
+<script type="module" src="session-lock.js"></script>
+<script type="module" src="session-heartbeat.js"></script>
+<script type="module" src="logout.js"></script>
 
-      let local = [];
-      try {
-        local = JSON.parse(localStorage.getItem(CUSTOMERS_LOCAL_KEY) || "[]") || [];
-      } catch { local = []; }
+<script type="module">
+  import { onAuthStateChanged, getAuth } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-auth.js";
+  import { listCustomers, upsertCustomer, removeCustomer } from "./db-customers.js";
 
-      if (!Array.isArray(local) || local.length === 0) {
-        try { localStorage.setItem(MIGRATED_KEY, "1"); } catch {}
-        return;
-      }
+  const auth = getAuth();
 
-      // Push each local customer to Firestore
-      for (const c of local) {
-        const displayName = c.displayName || c.name || c.customerName || "";
-        const phone = c.phone || c.mobile || "";
-        const customerId = c.customerId || genCustomerId(displayName, phone);
+  const ACTIVE_KEY = "acsActiveCustomerId";
+  const CUSTOMERS_LOCAL_KEY = "acsCustomers";
+  const MIGRATED_KEY = "acs:migratedCustomersToCloud";
 
-        await upsertCustomer({
-          customerId,
-          displayName: displayName.trim(),
-          normalizedName: normalizeName(displayName),
-          phone: String(phone || "").trim()
-        });
+  const activePill = document.getElementById("activePill");
+  const msgEl = document.getElementById("msg");
+  const listEl = document.getElementById("list");
+  const emptyEl = document.getElementById("empty");
+  const refreshBtn = document.getElementById("refreshBtn");
+  const logoutBtn = document.getElementById("logoutBtn");
 
-        // keep active mapping if local had it
-        if (getActiveId() === c.customerId && c.customerId !== customerId) {
-          setActiveId(customerId);
-        }
-      }
+  const searchInput = document.getElementById("searchInput");
 
+  // Modal
+  const modalBackdrop = document.getElementById("modalBackdrop");
+  const openAddBtn = document.getElementById("openAddBtn");
+  const closeModalBtn = document.getElementById("closeModalBtn");
+  const cancelBtn = document.getElementById("cancelBtn");
+  const saveBtn = document.getElementById("saveBtn");
+  const custName = document.getElementById("custName");
+  const custPhone = document.getElementById("custPhone");
+
+  let allCustomers = [];
+
+  function showMsg(text, type){
+    msgEl.textContent = text || "";
+    msgEl.className = "msg " + (type || "");
+  }
+
+  function normalizeName(s){
+    return String(s || "")
+      .trim()
+      .toLowerCase()
+      .replace(/\s+/g, " ");
+  }
+
+  function normalizePhone(s){
+    return String(s || "").replace(/\D/g, "");
+  }
+
+  function safeIdPart(s){
+    return String(s || "")
+      .trim()
+      .toLowerCase()
+      .replace(/\s+/g, "_")
+      .replace(/[^a-z0-9_]/g, "");
+  }
+
+  function genCustomerId(name, phoneDigits){
+    // Unique enough + readable
+    return `CUST_${safeIdPart(name) || "customer"}_${phoneDigits || "no"}_${Date.now().toString(36)}`;
+  }
+
+  function getActiveId(){
+    try { return localStorage.getItem(ACTIVE_KEY) || ""; } catch { return ""; }
+  }
+  function setActiveId(id){
+    try { localStorage.setItem(ACTIVE_KEY, id); } catch {}
+  }
+
+  function openModal(){
+    modalBackdrop.style.display = "flex";
+    modalBackdrop.setAttribute("aria-hidden", "false");
+    custName.focus();
+  }
+  function closeModal(){
+    modalBackdrop.style.display = "none";
+    modalBackdrop.setAttribute("aria-hidden", "true");
+    custName.value = "";
+    custPhone.value = "";
+  }
+
+  openAddBtn.addEventListener("click", openModal);
+  closeModalBtn.addEventListener("click", closeModal);
+  cancelBtn.addEventListener("click", closeModal);
+  modalBackdrop.addEventListener("click", (e) => {
+    if (e.target === modalBackdrop) closeModal();
+  });
+
+  logoutBtn.addEventListener("click", () => window.acsLogout && window.acsLogout());
+
+  function updateActivePill(){
+    const activeId = getActiveId();
+    const active = allCustomers.find(c => c.customerId === activeId);
+    activePill.textContent = "Active: " + (active ? (active.displayName || "Unnamed") : "—");
+  }
+
+  async function migrateLocalCustomersOnce(){
+    let migrated = false;
+    try { migrated = localStorage.getItem(MIGRATED_KEY) === "1"; } catch {}
+    if (migrated) return;
+
+    let local = [];
+    try { local = JSON.parse(localStorage.getItem(CUSTOMERS_LOCAL_KEY) || "[]") || []; } catch { local = []; }
+    if (!Array.isArray(local) || local.length === 0) {
       try { localStorage.setItem(MIGRATED_KEY, "1"); } catch {}
-      showMsg("✅ Local customers migrated to cloud.", "ok");
+      return;
     }
 
-    function render(customers){
-      listEl.innerHTML = "";
-      const activeId = getActiveId();
+    for (const c of local) {
+      const displayName = (c.displayName || c.name || c.customerName || "").trim();
+      const phone = String(c.phone || c.mobile || "").trim();
+      const phoneDigits = normalizePhone(phone);
+      if (!displayName) continue;
 
-      if (!customers || customers.length === 0) {
-        emptyEl.textContent = "No customers yet. Add your first customer above.";
-        return;
-      }
-      emptyEl.textContent = "";
+      const customerId = c.customerId || genCustomerId(displayName, phoneDigits);
 
-      customers.forEach(c => {
-        const item = document.createElement("div");
-        item.className = "item" + (c.customerId === activeId ? " active" : "");
-
-        const left = document.createElement("div");
-        left.className = "left";
-
-        const name = document.createElement("div");
-        name.className = "name";
-        name.textContent = c.displayName || "Unnamed customer";
-
-        const sub = document.createElement("div");
-        sub.className = "sub";
-        sub.textContent = c.phone ? `📞 ${c.phone}` : "No phone";
-
-        left.appendChild(name);
-        left.appendChild(sub);
-
-        const actions = document.createElement("div");
-        actions.className = "actions";
-
-        const selectBtn = document.createElement("button");
-        selectBtn.textContent = "Select";
-        selectBtn.addEventListener("click", () => {
-          setActiveId(c.customerId);
-          showMsg(`Active customer: ${c.displayName}`, "ok");
-          // Go to report after selecting
-          window.location.href = "index.html";
-        });
-
-        const delBtn = document.createElement("button");
-        delBtn.textContent = "Delete";
-        delBtn.className = "danger";
-        delBtn.addEventListener("click", async () => {
-          const ok = confirm(`Delete customer "${c.displayName}"?\n\n(Only deletes customer profile. Entries migration will be handled later.)`);
-          if (!ok) return;
-          await removeCustomer(c.customerId);
-
-          // If active deleted, clear it
-          if (getActiveId() === c.customerId) {
-            try { localStorage.removeItem(ACTIVE_KEY); } catch {}
-          }
-
-          await load();
-        });
-
-        actions.appendChild(selectBtn);
-        actions.appendChild(delBtn);
-
-        item.appendChild(left);
-        item.appendChild(actions);
-        listEl.appendChild(item);
+      await upsertCustomer({
+        customerId,
+        displayName,
+        normalizedName: normalizeName(displayName),
+        phone: phoneDigits
       });
-    }
 
-    async function load(){
-      try {
-        emptyEl.textContent = "Loading…";
-        const customers = await listCustomers();
-        render(customers);
-      } catch (e) {
-        console.error(e);
-        emptyEl.textContent = "Failed to load customers. Check login and Firestore rules.";
-        showMsg("❌ Could not load from cloud.", "err");
+      // keep active mapping if same id
+      if (getActiveId() === c.customerId && c.customerId !== customerId) {
+        setActiveId(customerId);
       }
     }
 
-    addBtn.addEventListener("click", async () => {
-      const name = custName.value.trim();
-      const phone = custPhone.value.trim();
+    try { localStorage.setItem(MIGRATED_KEY, "1"); } catch {}
+  }
 
-      if (!name) return showMsg("Enter customer name.", "err");
+  function sortCustomers(list){
+    // lastVisited first; then createdAtMs; then name
+    return [...list].sort((a,b) => {
+      const av = a.lastVisitedMs || 0;
+      const bv = b.lastVisitedMs || 0;
+      if (bv !== av) return bv - av;
 
-      addBtn.disabled = true;
-      refreshBtn.disabled = true;
-      showMsg("Saving…", "");
+      const ac = a.createdAtMs || 0;
+      const bc = b.createdAtMs || 0;
+      if (bc !== ac) return bc - ac;
 
-      try {
-        const customerId = genCustomerId(name, phone);
+      const an = (a.normalizedName || "").toLowerCase();
+      const bn = (b.normalizedName || "").toLowerCase();
+      return an.localeCompare(bn);
+    });
+  }
 
-        await upsertCustomer({
-          customerId,
-          displayName: name,
-          normalizedName: normalizeName(name),
-          phone: phone
-        });
+  function render(list){
+    listEl.innerHTML = "";
+    const activeId = getActiveId();
 
-        showMsg("✅ Customer saved.", "ok");
-        custName.value = "";
-        custPhone.value = "";
+    if (!list || list.length === 0) {
+      emptyEl.textContent = "No customers yet. Tap “Add Customer”.";
+      updateActivePill();
+      return;
+    }
+
+    emptyEl.textContent = "";
+
+    list.forEach(c => {
+      const item = document.createElement("div");
+      item.className = "item" + (c.customerId === activeId ? " active" : "");
+
+      const left = document.createElement("div");
+      left.className = "left";
+
+      const name = document.createElement("div");
+      name.className = "name";
+      name.textContent = c.displayName || "Unnamed customer";
+
+      const sub = document.createElement("div");
+      sub.className = "sub";
+      sub.textContent = c.phone ? `📞 ${c.phone}` : "No phone";
+
+      left.appendChild(name);
+      left.appendChild(sub);
+
+      const right = document.createElement("div");
+      right.className = "right";
+
+      const selectBtn = document.createElement("button");
+      selectBtn.className = "mini";
+      selectBtn.textContent = "Select";
+      selectBtn.addEventListener("click", async () => {
+        setActiveId(c.customerId);
+
+        // ✅ mark as last visited (so it appears first)
+        try {
+          await upsertCustomer({
+            customerId: c.customerId,
+            lastVisitedMs: Date.now()
+          });
+        } catch {}
+
+        window.location.href = "index.html";
+      });
+
+      const delBtn = document.createElement("button");
+      delBtn.className = "mini danger";
+      delBtn.textContent = "Delete";
+      delBtn.addEventListener("click", async () => {
+        const ok = confirm(`Delete customer "${c.displayName}"?\n\n(Only deletes profile. Entries will be handled later.)`);
+        if (!ok) return;
+
+        await removeCustomer(c.customerId);
+
+        if (getActiveId() === c.customerId) {
+          try { localStorage.removeItem(ACTIVE_KEY); } catch {}
+        }
+
         await load();
-      } catch (e) {
-        console.error(e);
-        showMsg("❌ Save failed.", "err");
-      } finally {
-        addBtn.disabled = false;
-        refreshBtn.disabled = false;
-      }
+      });
+
+      right.appendChild(selectBtn);
+      right.appendChild(delBtn);
+
+      item.appendChild(left);
+      item.appendChild(right);
+
+      listEl.appendChild(item);
     });
 
-    refreshBtn.addEventListener("click", load);
+    updateActivePill();
+  }
 
-    // ✅ Run once
+  function applySearch(){
+    const qRaw = searchInput.value || "";
+    const q = qRaw.trim().toLowerCase();
+
+    if (!q) {
+      render(sortCustomers(allCustomers));
+      return;
+    }
+
+    const filtered = allCustomers.filter(c => {
+      const name = (c.displayName || "").toLowerCase();
+      const phone = String(c.phone || "");
+      return name.includes(q) || phone.includes(q);
+    });
+
+    render(sortCustomers(filtered));
+  }
+
+  searchInput.addEventListener("input", applySearch);
+
+  async function load(){
+    try {
+      emptyEl.textContent = "Loading…";
+      showMsg("", "");
+      const customers = await listCustomers();
+      allCustomers = Array.isArray(customers) ? customers : [];
+      render(sortCustomers(allCustomers));
+    } catch (e) {
+      console.error(e);
+      emptyEl.textContent = "Failed to load customers. Check login / Firestore rules.";
+      showMsg("❌ Could not load customers from cloud.", "err");
+    }
+  }
+
+  refreshBtn.addEventListener("click", load);
+
+  saveBtn.addEventListener("click", async () => {
+    const name = custName.value.trim();
+    const phoneDigits = normalizePhone(custPhone.value);
+
+    if (!name) return showMsg("Enter customer name.", "err");
+
+    saveBtn.disabled = true;
+    showMsg("Saving…", "");
+
+    try {
+      // Load current list (to detect duplicates)
+      const current = await listCustomers();
+      const nName = normalizeName(name);
+
+      const duplicate = (current || []).find(c =>
+        (c.normalizedName || normalizeName(c.displayName || "")) === nName &&
+        normalizePhone(c.phone || "") === phoneDigits
+      );
+
+      if (duplicate) {
+        showMsg("⚠️ This customer already exists (same name + phone).", "err");
+        saveBtn.disabled = false;
+        return;
+      }
+
+      const customerId = genCustomerId(name, phoneDigits);
+
+      await upsertCustomer({
+        customerId,
+        displayName: name,
+        normalizedName: nName,
+        phone: phoneDigits,
+        createdAtMs: Date.now(),
+        lastVisitedMs: Date.now()
+      });
+
+      closeModal();
+      showMsg("✅ Customer saved.", "ok");
+
+      await load();
+    } catch (e) {
+      console.error(e);
+      showMsg("❌ Save failed.", "err");
+    } finally {
+      saveBtn.disabled = false;
+    }
+  });
+
+  // ✅ Fix "empty until refresh": wait for auth to be ready, then load automatically
+  onAuthStateChanged(auth, async (user) => {
+    if (!user) return; // auth-guard should redirect
     await migrateLocalCustomersOnce();
     await load();
-  </script>
+  });
+</script>
 </body>
 </html>
