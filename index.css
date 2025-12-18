@@ -1,344 +1,338 @@
 /* ===============================
-   INDEX.CSS – Report Card Styles (ENHANCED)
-   Used ONLY by index.html
+   INDEX.CSS – PRO UI (Report Card)
    =============================== */
 
-/* --------- small variables (keeps same UI look) --------- */
 :root{
-  --card-bg: #ffffffaa;
-  --card-solid: #ffffff;
-  --border: #e5e7eb;
-  --text: #111827;
-  --muted: #6b7280;
-  --shadow-soft: 0 8px 20px rgba(0,0,0,0.06);
-  --shadow-strong: 0 12px 30px rgba(0,0,0,0.12);
-  --radius-lg: 24px;
-  --radius-md: 14px;
-  --radius-sm: 10px;
-  --accent-a: #8da4f3;
-  --accent-b: #4f46e5;
+  --bg1:#0b1220;
+  --bg2:#111827;
+  --panel:#ffffffcc;
+  --panelSolid:#ffffff;
+  --border:rgba(17,24,39,.10);
+  --text:#0f172a;
+  --muted:#64748b;
+  --accent:#4f46e5;
+  --accent2:#7c3aed;
+  --ok:#16a34a;
+  --warn:#f59e0b;
+  --shadow: 0 18px 40px rgba(2,6,23,.18);
+  --shadowSoft: 0 10px 24px rgba(2,6,23,.10);
+  --rLg:24px;
+  --rMd:16px;
+  --rSm:12px;
 }
 
-/* =========================================================
-   Active customer banner (moved from <style>)
-   ========================================================= */
+/* Make background feel premium */
+body{
+  background:
+    radial-gradient(1200px 700px at 15% 0%, rgba(79,70,229,.25), transparent 60%),
+    radial-gradient(1000px 600px at 80% 10%, rgba(124,58,237,.18), transparent 60%),
+    radial-gradient(900px 700px at 50% 110%, rgba(255,255,255,.10), transparent 60%),
+    linear-gradient(180deg, #eef2ff 0%, #e5e7eb 100%);
+}
+
+/* App header */
+.appbar{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  margin: 6px 0 12px;
+}
+.app-title{
+  font-size: 18px;
+  font-weight: 900;
+  letter-spacing: .2px;
+  color: #0b1220;
+}
+.app-subtitle{
+  margin-top:2px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #6b7280;
+}
+
+.meta-row{
+  margin-top: 10px;
+  display:flex;
+  justify-content:space-between;
+  gap:10px;
+  flex-wrap:wrap;
+  font-size: 12px;
+  font-weight: 900;
+  opacity: .95;
+}
+
+.meta-item{
+  color: #ffffff;
+}
+
+@media (max-width: 420px){
+  .meta-row{
+    justify-content:center;
+    text-align:center;
+  }
+}
+
+/* Active customer banner refined */
 .active-customer-banner{
-  background:#ffffff;
-  border:1px solid var(--border);
-  border-radius:14px;
-  padding:10px 12px;
-  box-shadow: 0 6px 16px rgba(0,0,0,0.06);
-  margin-bottom:12px;
+  background: rgba(255,255,255,.92);
+  border: 1px solid var(--border);
+  border-radius: var(--rMd);
+  padding: 12px 12px;
+  box-shadow: var(--shadowSoft);
+  margin-bottom: 12px;
   display:flex;
   justify-content:space-between;
   align-items:center;
-  gap:10px;
+  gap: 10px;
 }
-.ac-left{ display:flex; flex-direction:column; gap:2px; min-width:0; }
 .ac-title{
-  font-size:12px;
-  color:var(--muted);
-  font-weight:700;
-  letter-spacing:.02em;
+  font-size:11px;
+  font-weight:900;
+  letter-spacing:.08em;
   text-transform:uppercase;
+  color:#6b7280;
 }
-.ac-name{
-  font-size:15px;
-  font-weight:800;
-  color:var(--text);
-  line-height:1.2;
-  white-space:nowrap;
-  overflow:hidden;
-  text-overflow:ellipsis;
-  max-width: 320px;
-}
-.ac-sub{
-  font-size:12px;
-  color:var(--muted);
-  white-space:nowrap;
-  overflow:hidden;
-  text-overflow:ellipsis;
-  max-width: 320px;
-}
+.ac-name{ font-size: 15px; font-weight: 1000; color:#0b1220; }
+.ac-sub{ font-size: 12px; font-weight: 700; color:#6b7280; }
 .ac-btn{
-  padding:8px 12px;
-  border-radius:999px;
   border:none;
   background:#e5e7eb;
-  color:var(--text);
-  font-weight:700;
-  cursor:pointer;
-  white-space:nowrap;
+  color:#111827;
+  font-weight:900;
+  border-radius:999px;
+  padding: 9px 12px;
 }
-.ac-btn:hover{ filter:brightness(.98); }
 .ac-btn:active{ transform: translateY(1px); }
 
-/* =========================================================
-   Controls panel
-   ========================================================= */
-.controls{
-  background: var(--card-bg);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
+/* A nice panel wrapper for controls */
+.panel{
+  background: var(--panel);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(255,255,255,.6);
+  border-radius: var(--rLg);
+  box-shadow: var(--shadowSoft);
   padding: 14px;
-  border-radius: var(--radius-md);
-  box-shadow: var(--shadow-soft);
-  border: 1px solid rgba(255,255,255,0.4);
+  margin-bottom: 14px;
+}
+.panel-head{
+  margin-bottom: 10px;
+}
+.panel-title{
+  font-size: 14px;
+  font-weight: 1000;
+  color: #0b1220;
+}
+.panel-desc{
+  margin-top: 4px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #6b7280;
+}
+
+/* Your existing .controls stays, but make it cleaner */
+.controls{
+  background: transparent;
+  padding: 0;
+  border-radius: 0;
+  box-shadow: none;
+  border: none;
   display:flex;
   flex-wrap:wrap;
   gap:10px;
-  margin-bottom:16px;
+  margin: 0;
+}
+.field{ flex:1 1 150px; min-width: 140px; }
+.field label{
+  font-size: 12px;
+  font-weight: 900;
+  color:#374151;
 }
 
-/* Each field */
-.field{
-  flex: 1 1 150px;
-  min-width: 140px;
+/* Inputs feel “app-like” */
+.field input,
+.field select{
+  width: 100%;
+  padding: 11px 12px;
+  border-radius: 14px;
+  border: 1px solid rgba(17,24,39,.12);
+  font-size: 14px;
+  font-weight: 800;
+  background: rgba(255,255,255,.96);
+  outline: none;
 }
-.field label{
-  display:block;
-  font-size:13px;
-  margin-bottom:4px;
-  color:#374151;
-  font-weight:700;
+.field input:focus{
+  border-color: rgba(79,70,229,.6);
+  box-shadow: 0 0 0 3px rgba(99,102,241,.18);
 }
 
 /* Buttons column */
 .buttons{
-  flex: 1 1 150px;
+  flex: 1 1 160px;
   display:flex;
   flex-direction:column;
-  gap:8px;
+  gap: 10px;
+}
+.buttons button{
+  min-height: 42px;
 }
 
-/* Make buttons easier on Android (tap target) */
-.buttons button,
-.share-row button{
-  min-height: 40px;
-}
-
-/* =========================================================
-   Share row (moved from <style>)
-   ========================================================= */
+/* Share row */
 .share-row{
   display:flex;
-  gap:10px;
-  margin-top:10px;
   flex-wrap:wrap;
-  width:100%;
+  gap:10px;
+  margin-top: 12px;
 }
 .share-row button{
-  border:none;
-  border-radius:999px;
-  padding:10px 14px;
-  font-size:14px;
-  font-weight:700;
-  cursor:pointer;
-  transition:.15s;
-  width:100%;
-  flex:1 1 160px;
+  flex: 1 1 160px;
+  min-height: 44px;
+  border-radius: 999px;
+  font-weight: 1000;
+  font-size: 14px;
 }
 .btn-whatsapp{
-  background:#07ff5c;
-  color:#ffffff;
-}
-.btn-whatsapp:disabled{
-  opacity:.5;
-  cursor:not-allowed;
+  background: linear-gradient(135deg, #16a34a, #22c55e);
+  color: white;
 }
 
-/* =========================================================
-   Report Card Container
-   ========================================================= */
+/* Report card -> invoice feel */
 #summaryCard{
   width:100%;
-  max-width:420px;
-  min-height:680px;
-  background: var(--card-solid);
-  border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-strong);
+  max-width: 420px;
+  background: var(--panelSolid);
+  border-radius: 26px;
+  box-shadow: var(--shadow);
   overflow:hidden;
-  margin: 20px auto 0;
+  margin: 16px auto 0;
   display:none;
   flex-direction:column;
-  border: 1px solid rgba(17,24,39,0.06);
+  border: 1px solid rgba(17,24,39,.08);
 }
 
-/* =========================================================
-   Header
-   ========================================================= */
+/* Header more premium */
 .card-header{
-  padding: 22px 12px 18px;
-  background: linear-gradient(135deg, var(--accent-a), var(--accent-b));
-  color: #ffffff;
+  padding: 22px 14px 16px;
+  background: linear-gradient(135deg, var(--accent2), var(--accent));
+  color:#fff;
   text-align:center;
-  position: relative;
 }
-
-/* Keep your typography same, just stable */
 .card-header h2{
-  margin:0;
-  font-size:24px;
-  font-weight:700;
-  letter-spacing:0.08em;
+  margin: 0;
+  font-size: 22px;
+  font-weight: 1000;
+  letter-spacing: .10em;
 }
-.card-header h3{
-  margin: 4px 0;
-  font-size:12px;
-  color:#f9e4bc;
-}
-
-/* Range line */
 .card-header .range{
-  margin-top:6px;
-  font-size:13px;
-  opacity:.95;
+  margin-top: 8px;
+  font-size: 12px;
+  font-weight: 800;
+  opacity: .95;
 }
 
-/* Your customer block in header */
+/* Customer block */
 .customer-block{
-  margin-top:10px;
-  padding:10px 12px;
-  border-radius:14px;
-  background: rgba(255,255,255,0.14);
-  border: 1px solid rgba(255,255,255,0.25);
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
+  margin-top: 12px;
+  padding: 10px 12px;
+  border-radius: 16px;
+  background: rgba(255,255,255,.14);
+  border: 1px solid rgba(255,255,255,.25);
   text-align:left;
 }
 .customer-block .line1{
-  font-size:13px;
-  font-weight:800;
-  color:#ffffff;
-  letter-spacing:.01em;
-}
-
-/* Make the owner/mobile lines not overlap on small screens */
-.card-header h3[style*="float:left"],
-.card-header h3[style*="float:right"]{
-  display:inline-block;
-  width:49%;
-  margin: 6px 0 0;
-}
-@media (max-width: 420px){
-  .card-header h3[style*="float:left"],
-  .card-header h3[style*="float:right"]{
-    width:100%;
-    float:none !important;
-    text-align:center !important;
-  }
-}
-
-/* =========================================================
-   Card Body / Table
-   ========================================================= */
-.card-body{
-  padding: 16px 16px 8px;
-  font-size:14px;
-  flex:1;
+  color:#fff;
+  font-size: 12px;
+  font-weight: 1000;
 }
 
 /* Table */
+.card-body{
+  padding: 14px 14px 8px;
+  flex: 1;
+}
 table{
   width:100%;
-  border-collapse:collapse;
-  font-size:13px;
-  table-layout: fixed; /* prevents overflow jump on mobile */
+  border-collapse: collapse;
+  table-layout: fixed;
+  font-size: 13px;
 }
-
 thead th{
-  background:#f3f4ff;
-  color:var(--text);
-  font-weight:700;
-  padding:8px 4px;
-  border-bottom:1px solid #d1d5db;
+  background: #f3f4ff;
+  color:#111827;
+  font-weight: 1000;
+  padding: 9px 4px;
+  border-bottom: 1px solid rgba(17,24,39,.10);
 }
-
-/* Prevent date column wrapping badly */
-thead th:nth-child(3),
-tbody td:nth-child(3){
-  width: 32%;
-}
-
-/* Rows */
 tbody td{
-  padding:10px 4px;
+  padding: 10px 4px;
   text-align:center;
-  border-bottom:1px solid var(--border);
-  color:#374151;
+  border-bottom: 1px dashed rgba(17,24,39,.12);
+  color:#1f2937;
+  font-weight: 800;
+}
+tbody tr:last-child td{
+  border-bottom: none;
 }
 
-/* Inputs inside table */
+/* Table inputs */
 .inputs-wrapper{
   display:flex;
   justify-content:center;
-  gap:4px;
+  gap:6px;
   align-items:center;
 }
-
-/* Better mobile tap + no zoom-jank */
 .inputs-wrapper input{
-  width:62px;
-  padding:4px;
-  border-radius:6px;
-  border:1px solid #d1d5db;
-  font-size:12px;
-  background:#ffffff;
-  outline:none;
+  width: 70px;
+  padding: 7px 8px;
+  border-radius: 10px;
+  border: 1px solid rgba(17,24,39,.14);
+  font-size: 13px;
+  font-weight: 900;
 }
 .inputs-wrapper input:focus{
-  border-color:#6366f1;
-  box-shadow: 0 0 0 2px rgba(99,102,241,.18);
+  border-color: rgba(79,70,229,.6);
+  box-shadow: 0 0 0 3px rgba(99,102,241,.16);
 }
 
-/* =========================================================
-   Table Footer
-   ========================================================= */
+/* Footer totals */
 tfoot td{
-  padding:8px 4px;
-  color:var(--text);
+  padding: 10px 4px;
 }
-
 tfoot .total-label{
   text-align:right;
   padding-right:10px;
-  font-weight:700;
-  border-top:2px solid #d1d5db;
+  font-weight: 1000;
+  border-top: 2px solid rgba(17,24,39,.12);
 }
 tfoot .total-value{
-  font-weight:800;
-  font-size:14px;
-  border-top:2px solid #d1d5db;
+  font-weight: 1000;
+  border-top: 2px solid rgba(17,24,39,.12);
 }
 tfoot .days-label{
-  padding-top:4px;
-  font-size:12px;
-  color:var(--muted);
+  padding-top: 6px;
+  font-size: 12px;
+  font-weight: 900;
+  color: #6b7280;
   text-align:center;
 }
 
-/* =========================================================
-   Card Footer
-   ========================================================= */
+/* Footer */
 .card-footer{
-  padding:8px 16px 14px;
+  padding: 10px 14px 14px;
+  border-top: 1px solid rgba(17,24,39,.08);
   text-align:center;
-  font-size:11px;
-  color:#9ca3af;
-  border-top:1px solid var(--border);
+  font-size: 11px;
+  color:#94a3b8;
   display:flex;
   flex-direction:column;
-  gap:2px;
+  gap:3px;
 }
 .card-footer .footer-line:last-child{
-  font-weight:600;
-  color: #4f46e5;
+  color: var(--accent);
+  font-weight: 1000;
 }
 
-/* =========================================================
-   Export (Image generation) – keep fixed 420px
-   IMPORTANT: DO NOT make this responsive, image layout must remain stable.
-   ========================================================= */
+/* Export card stable for image */
 .export-card{
   position: fixed;
   left: -9999px;
@@ -348,59 +342,19 @@ tfoot .days-label{
   border-radius: 24px;
   box-shadow: none;
   margin: 0;
-  display: flex;
-  flex-direction: column;
+  display:flex;
+  flex-direction:column;
 }
 
-/* =========================================================
-   Mobile tweaks (Android)
-   ========================================================= */
+/* Mobile (Android) */
 @media (max-width: 480px){
-  /* Controls become cleaner stacked */
-  .controls{
-    padding:12px;
-    gap:10px;
-  }
-
-  .field{
-    flex: 1 1 100%;
-    min-width: 0;
-  }
-
-  .buttons{
-    flex: 1 1 100%;
-  }
-
-  /* Report card fits screen */
-  #summaryCard{
-    max-width:100%;
-    min-height: unset;
-  }
-
-  .card-body{
-    padding: 14px 12px 8px;
-  }
-
-  /* Inputs slightly larger for touch */
-  .inputs-wrapper input{
-    width: 68px;
-    font-size: 13px;
-    padding: 6px;
-  }
+  .panel{ padding: 12px; }
+  .field{ flex: 1 1 100%; min-width: 0; }
+  .buttons{ flex: 1 1 100%; }
+  #summaryCard{ max-width: 100%; }
+  .inputs-wrapper input{ width: 74px; }
 }
 
-/* Super small screens */
 @media (max-width: 360px){
-  .inputs-wrapper input{
-    width: 62px;
-  }
-  thead th,
-  tbody td{
-    padding: 8px 3px;
-  }
-}
-
-/* Optional: reduce motion for accessibility */
-@media (prefers-reduced-motion: reduce){
-  *{ transition: none !important; }
+  .inputs-wrapper input{ width: 68px; }
 }
