@@ -4,7 +4,6 @@
   <meta charset="UTF-8" />
   <title>ACS Calculator - Bills / Payments</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-
   <!-- Home Screen + Favicon (GitHub Pages repo path) -->
   <link rel="icon" href="/ACS_Calculator/favicon.ico" type="image/x-icon">
   <link rel="icon" type="image/png" sizes="32x32" href="/ACS_Calculator/favicon-32x32.png">
@@ -16,17 +15,16 @@
   <link rel="stylesheet" href="base.css">
   <link rel="stylesheet" href="bills.css">
 </head>
-
 <body>
 <div class="wrapper">
   <h1>Bills / Payments</h1>
 
   <div class="top-actions">
-    <button class="secondary" type="button" onclick="window.location.href='index.html'">← Report Card</button>
-    <button class="secondary" type="button" onclick="window.location.href='daily-entry.html'">Daily entries</button>
-    <button class="secondary" type="button" onclick="window.location.href='customers.html'">Change customer</button>
-    <button class="danger" type="button" id="clearBillsBtn">Clear all bills</button>
-    <button class="secondary" type="button" id="logoutBtn">Logout</button>
+    <button class="secondary" onclick="window.location.href='index.html'">← Report Card</button>
+    <button class="secondary" onclick="window.location.href='daily-entry.html'">Daily entries</button>
+    <button class="secondary" onclick="window.location.href='customers.html'">Change customer</button>
+    <button class="danger" id="clearBillsBtn">Clear all bills</button>
+    <button id="logoutBtn" onclick="acsLogout()" class="secondary">Logout</button>
   </div>
 
   <div class="list-card">
@@ -35,96 +33,63 @@
   </div>
 </div>
 
-<!-- ✅ Auth/session (same as your project) -->
+<!-- ✅ Session tools (same as your project) -->
 <script type="module" src="auth-guard.js"></script>
 <script type="module" src="session.js"></script>
-<script type="module" src="logout.js"></script>
 <script type="module" src="session-lock.js"></script>
 <script type="module" src="session-heartbeat.js"></script>
+<script type="module" src="logout.js"></script>
 
-<!-- ✅ CLOUD BILLS LOGIC (UI unchanged) -->
+<!-- ✅ CLOUD Bills Logic -->
 <script type="module">
   import { auth } from "./firebase.js";
-  import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-auth.js";
-  import {
-    getFirestore,
-    collection,
-    doc,
-    getDocs,
-    setDoc,
-    updateDoc,
-    deleteDoc,
-    query,
-    orderBy,
-    serverTimestamp,
-    increment
-  } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore.js";
+  import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-auth.js";
+  import { listBills, addPayment, clearBills } from "./db-bills.js";
 
   const ACTIVE_KEY = "acsActiveCustomerId";
-  const BILLS_KEY_LOCAL = (customerId) => `acsBills:${customerId}`;
 
   const billsList = document.getElementById("billsList");
   const clearBillsBtn = document.getElementById("clearBillsBtn");
   const logoutBtn = document.getElementById("logoutBtn");
 
-  // ✅ Logout button (works even if inline onclick removed)
-  logoutBtn.addEventListener("click", () => {
-    if (window.acsLogout) return window.acsLogout();
-    // fallback
-    window.location.href = "login.html";
-  });
-
-  function getActiveCustomerId() {
+  function getActiveCustomerId(){
     try { return localStorage.getItem(ACTIVE_KEY) || ""; } catch { return ""; }
   }
 
-  function getLocalBills(customerId) {
-    try {
-      const raw = localStorage.getItem(BILLS_KEY_LOCAL(customerId));
-      return raw ? JSON.parse(raw) : [];
-    } catch (e) {
-      console.error("Failed to parse local bills", e);
-      return [];
-    }
-  }
-
-  function setLocalBills(customerId, bills) {
-    try { localStorage.setItem(BILLS_KEY_LOCAL(customerId), JSON.stringify(bills || [])); } catch {}
-  }
-
-  function statusFromAmounts(bill) {
-    const total = Number(bill?.total || 0);
-    const paid  = Number(bill?.paid  || 0);
-    if (total <= 0) return "pending";
-    if (paid <= 0) return "pending";
-    if (paid < total) return "loading";
+  function statusFromAmounts(total, paid){
+    const t = Number(total || 0);
+    const p = Number(paid || 0);
+    if (t <= 0) return "pending";
+    if (p <= 0) return "pending";
+    if (p < t) return "loading";
     return "success";
   }
 
   function formatDateShort(dStr) {
+    // YYYY-MM-DD -> DD-MM-YYYY (same as your old)
     return String(dStr || "").split("-").reverse().join("-");
   }
 
-  function normalizeBillForUI(b) {
-    const total = Number(b?.total || 0);
-    const paid  = Number(b?.paid  || 0);
-    const remaining = Math.max(total - paid, 0);
-    const status = statusFromAmounts({ total, paid });
+  async function refreshBills(){
+    const customerId = getActiveCustomerId();
+    if (!customerId) {
+      window.location.href = "customers.html";
+      return;
+    }
 
-    return {
-      id: b.id || b.billId || ("BILL-" + Date.now()),
-      from: b.from,
-      to: b.to,
-      total,
-      paid,
-      remaining,
-      status,
-      createdAt: b.createdAt || null
-    };
-  }
+    billsList.textContent = "Loading…";
+    billsList.classList.add("muted");
 
-  function renderBills(bills) {
-    if (!bills || bills.length === 0) {
+    let bills = [];
+    try {
+      bills = await listBills(customerId, 200);
+    } catch (e) {
+      console.error(e);
+      billsList.textContent = "Failed to load bills. Please refresh.";
+      return;
+    }
+
+    if (!Array.isArray(bills) || bills.length === 0) {
       billsList.textContent = "No bills yet. Generate a report from the main page.";
       billsList.classList.add("muted");
       return;
@@ -133,9 +98,21 @@
     billsList.innerHTML = "";
     billsList.classList.remove("muted");
 
+    // newest first already, but keep your old style safety sort:
+    bills.sort((a, b) => {
+      const ta = a.createdAt ? Date.parse(a.createdAt) : 0;
+      const tb = b.createdAt ? Date.parse(b.createdAt) : 0;
+      return tb - ta;
+    });
+
     bills.forEach((bill, index) => {
+      const total = Number(bill.total || 0);
+      const paid  = Number(bill.paid || 0);
+      const remaining = Math.max(total - paid, 0);
+      const status = statusFromAmounts(total, paid);
+
       const item = document.createElement("div");
-      item.className = "bill-item bill-" + bill.status;
+      item.className = "bill-item bill-" + status;
 
       const header = document.createElement("div");
       header.className = "bill-header";
@@ -155,16 +132,16 @@
       meta.className = "bill-meta";
 
       const pill = document.createElement("span");
-      pill.className = "pill status-" + bill.status;
+      pill.className = "pill status-" + status;
       pill.textContent =
-        bill.status === "pending" ? "Pending (editable entries)"
-        : bill.status === "loading" ? "Payment started (locked)"
+        status === "pending" ? "Pending (editable entries)"
+        : status === "loading" ? "Payment started (locked)"
         : "Paid (locked)";
 
       const amounts = document.createElement("div");
       amounts.className = "bill-amounts";
       amounts.textContent =
-        `Total: ₹${bill.total.toFixed(0)} | Paid: ₹${bill.paid.toFixed(0)} | Remaining: ₹${bill.remaining.toFixed(0)}`;
+        `Total: ₹${total.toFixed(0)} | Paid: ₹${paid.toFixed(0)} | Remaining: ₹${remaining.toFixed(0)}`;
 
       const payBtn = document.createElement("button");
       payBtn.className = "pay-btn";
@@ -181,18 +158,12 @@
         }
 
         try {
-          payBtn.disabled = true;
-          payBtn.textContent = "Saving...";
-
-          await addPaymentCloud(bill.id, amt);
-
-          await refreshBillsCloud(); // reload UI
+          // Cloud: increment paid
+          await addPayment(customerId, bill.id || bill.billId, amt);
+          await refreshBills();
         } catch (e) {
           console.error(e);
-          alert("Payment update failed.");
-        } finally {
-          payBtn.disabled = false;
-          payBtn.textContent = "Add payment";
+          alert("Payment failed. Please try again.");
         }
       });
 
@@ -206,142 +177,32 @@
     });
   }
 
-  // ---------- Firestore helpers ----------
-  const db = getFirestore();
-
-  function billsColRef(uid, customerId) {
-    return collection(db, "admins", uid, "customers", customerId, "bills");
-  }
-
-  function billDocRef(uid, customerId, billId) {
-    return doc(db, "admins", uid, "customers", customerId, "bills", billId);
-  }
-
-  async function fetchBillsCloud(uid, customerId) {
-    const qy = query(billsColRef(uid, customerId), orderBy("createdAt", "desc"));
-    const snap = await getDocs(qy);
-    return snap.docs.map(d => ({ id: d.id, ...d.data() }));
-  }
-
-  async function migrateLocalBillsToCloudIfNeeded(uid, customerId) {
-    // If cloud already has bills, do nothing
-    const cloudBills = await fetchBillsCloud(uid, customerId);
-    if (cloudBills.length > 0) return;
-
-    const local = getLocalBills(customerId);
-    if (!Array.isArray(local) || local.length === 0) return;
-
-    // Migrate each local bill -> cloud doc
-    const ops = local.map(async (b) => {
-      const billId = b.id || ("BILL-" + Date.now() + "-" + Math.random().toString(16).slice(2));
-      const total = Number(b.total || 0);
-      const paid  = Number(b.paid  || 0);
-
-      await setDoc(billDocRef(uid, customerId, billId), {
-        billId,
-        from: b.from,
-        to: b.to,
-        total,
-        paid,
-        status: statusFromAmounts({ total, paid }),
-        createdAt: b.createdAt ? b.createdAt : new Date().toISOString(),
-        updatedAt: serverTimestamp()
-      }, { merge: true });
-    });
-
-    await Promise.all(ops);
-  }
-
-  async function addPaymentCloud(billId, amt) {
-    const customerId = getActiveCustomerId();
-    const user = auth.currentUser;
-    if (!user) throw new Error("Not logged in");
-    if (!customerId) throw new Error("No active customer");
-
-    const ref = billDocRef(user.uid, customerId, billId);
-
-    // Atomic increment paid + update status after re-calc (simple approach: increment then reload list)
-    await updateDoc(ref, {
-      paid: increment(Number(amt)),
-      updatedAt: serverTimestamp()
-    });
-
-    // After increment, we will refresh + compute status in UI.
-    // (Optional: you can also store status in cloud by reading doc again later.)
-  }
-
-  async function clearAllBillsCloud(uid, customerId) {
-    const snap = await getDocs(billsColRef(uid, customerId));
-    const ops = snap.docs.map(d => deleteDoc(d.ref));
-    await Promise.all(ops);
-  }
-
-  async function refreshBillsCloud() {
-    const customerId = getActiveCustomerId();
-    if (!customerId) {
-      window.location.href = "customers.html";
-      return;
-    }
-
-    const user = auth.currentUser;
-    if (!user) return;
-
-    billsList.textContent = "Loading…";
-    billsList.classList.add("muted");
-
-    // One-time migration if cloud empty
-    await migrateLocalBillsToCloudIfNeeded(user.uid, customerId);
-
-    // Load cloud bills
-    const cloud = await fetchBillsCloud(user.uid, customerId);
-
-    // Normalize + compute status locally (in case some docs don’t have status yet)
-    const normalized = (cloud || []).map(normalizeBillForUI);
-
-    // Also keep localStorage in sync (optional, but helps your other pages that still read local bills)
-    setLocalBills(customerId, normalized.map(b => ({
-      id: b.id,
-      from: b.from,
-      to: b.to,
-      total: b.total,
-      paid: b.paid,
-      status: b.status,
-      createdAt: b.createdAt || new Date().toISOString()
-    })));
-
-    renderBills(normalized);
-  }
-
   clearBillsBtn.addEventListener("click", async () => {
     const customerId = getActiveCustomerId();
     if (!customerId) return window.location.href = "customers.html";
-    const user = auth.currentUser;
-    if (!user) return;
 
-    const ok = confirm("Clear ALL bills for this customer?");
-    if (!ok) return;
+    if (!confirm("Clear ALL bills for this customer?")) return;
 
     try {
-      clearBillsBtn.disabled = true;
-      clearBillsBtn.textContent = "Clearing...";
-
-      await clearAllBillsCloud(user.uid, customerId);
-      try { localStorage.removeItem(BILLS_KEY_LOCAL(customerId)); } catch {}
-
-      await refreshBillsCloud();
+      await clearBills(customerId);
+      await refreshBills();
     } catch (e) {
       console.error(e);
       alert("Failed to clear bills.");
-    } finally {
-      clearBillsBtn.disabled = false;
-      clearBillsBtn.textContent = "Clear all bills";
     }
   });
 
-  // Boot
+  // ✅ Logout safety (in case acsLogout not available)
+  logoutBtn.addEventListener("click", async () => {
+    if (window.acsLogout) return; // logout.js will handle
+    try { await signOut(auth); } catch {}
+    window.location.href = "login.html";
+  });
+
+  // ✅ Load bills only after auth is ready
   onAuthStateChanged(auth, async (user) => {
     if (!user) return;
-    await refreshBillsCloud();
+    await refreshBills();
   });
 </script>
 </body>
