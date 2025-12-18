@@ -269,12 +269,12 @@
   import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-auth.js";
   import { listCustomers } from "./db-customers.js";
   import { upsertEntry, getEntry, deleteEntry, listLatestEntries } from "./db-entries.js";
+  import { listBills } from "./db-bills.js"; // ✅ CLOUD bills
 
   const auth = getAuth();
 
   const ACTIVE_KEY    = "acsActiveCustomerId";
-  const CUSTOMERS_KEY = "acsCustomers"; // only for fallback display; main source is db-customers
-  const BILLS_KEY_PREFIX = "acsBills:"; // bills remain local per customer for now
+  const CUSTOMERS_KEY = "acsCustomers"; // fallback display only
 
   const acName = document.getElementById("acName");
   const acSub  = document.getElementById("acSub");
@@ -289,6 +289,7 @@
 
   logoutBtn.addEventListener("click", () => window.acsLogout && window.acsLogout());
 
+  // ---------------- helpers ----------------
   function showStatus(text, ok){
     statusMsg.textContent = text || "";
     statusMsg.style.color = ok ? "#047857" : "#b91c1c";
@@ -302,6 +303,7 @@
   function applyDateLimits(){
     const t = todayIso();
     dateInput.max = t; // ✅ future date block (UI)
+    if (dateInput.value && dateInput.value > t) dateInput.value = t;
   }
 
   function getActiveCustomerId(){
@@ -325,49 +327,72 @@
     }
   }
 
-  function getBillsKey(customerId){
-    return BILLS_KEY_PREFIX + customerId;
+  function ddmmyyyy(dateIso){
+    const [y,m,d] = String(dateIso).split("-");
+    return `${d}-${m}-${y}`;
   }
 
-  function getBills(customerId){
+  // ---------------- CLOUD bills cache ----------------
+  let billsCache = [];
+  let billsLoadedForCustomer = "";
+
+  function normalizeBill(b){
+    const total = Number(b?.total || 0);
+    const paid  = Number(b?.paid  || 0);
+
+    // compute status if missing/old
+    let status = String(b?.status || "").trim();
+    if (!status) {
+      if (total <= 0) status = "pending";
+      else if (paid <= 0) status = "pending";
+      else if (paid < total) status = "loading";
+      else status = "success";
+    }
+    return {
+      id: b?.id || b?.billId || "",
+      from: b?.from || "",
+      to: b?.to || "",
+      total,
+      paid,
+      status
+    };
+  }
+
+  async function loadBills(customerId){
+    if (!customerId) return [];
+    if (billsLoadedForCustomer === customerId && billsCache.length) return billsCache;
+
     try {
-      const raw = localStorage.getItem(getBillsKey(customerId));
-      return raw ? JSON.parse(raw) : [];
-    } catch {
-      return [];
+      const rows = await listBills(customerId, 500);
+      billsCache = (rows || []).map(normalizeBill);
+      billsLoadedForCustomer = customerId;
+      return billsCache;
+    } catch (e) {
+      console.warn("listBills failed:", e);
+      billsCache = [];
+      billsLoadedForCustomer = customerId;
+      return billsCache;
     }
   }
 
-  function statusFromAmounts(bill){
-    const total = bill.total || 0;
-    const paid  = bill.paid  || 0;
-    if (total <= 0) return "pending";
-    if (paid <= 0) return "pending";
-    if (paid < total) return "loading";
-    return "success";
-  }
-
-  // Locked only if bill stage is loading/success
-  function isLockedDate(customerId, dateIso){
-    const bills = getBills(customerId);
-    return bills.some(b => {
+  function isLockedDateFromBills(dateIso){
+    // LOCK when payment started OR paid
+    return billsCache.some(b => {
       if (!b.from || !b.to) return false;
       if (!(b.from <= dateIso && dateIso <= b.to)) return false;
-      const s = statusFromAmounts(b);
-      return s === "loading" || s === "success";
+      return b.status === "loading" || b.status === "success";
     });
   }
 
-  // for one date show strongest status (pending/loading/success) if inside any bill
-  function statusForDate(customerId, dateIso){
-    const bills = getBills(customerId);
+  function statusForDateFromBills(dateIso){
+    // strongest status inside any bill range
     const order = { pending: 1, loading: 2, success: 3 };
     let best = null;
 
-    bills.forEach(b => {
+    billsCache.forEach(b => {
       if (!b.from || !b.to) return;
       if (b.from <= dateIso && dateIso <= b.to) {
-        const s = statusFromAmounts(b);
+        const s = b.status || "pending";
         if (!best || order[s] > order[best]) best = s;
       }
     });
@@ -375,11 +400,7 @@
     return best; // null if not in any bill
   }
 
-  function ddmmyyyy(dateIso){
-    const [y,m,d] = String(dateIso).split("-");
-    return `${d}-${m}-${y}`;
-  }
-
+  // ---------------- entries ----------------
   async function fillInputsIfExists(customerId, dateIso){
     const existing = await getEntry(customerId, dateIso);
     if (existing) {
@@ -409,7 +430,7 @@
     rows.forEach(r => {
       const dateIso = r.dateIso;
       const total = Number(r.total || (Number(r.kg||0)*Number(r.rate||0)));
-      const status = statusForDate(customerId, dateIso);
+      const status = statusForDateFromBills(dateIso);
 
       const item = document.createElement("div");
       item.className = "entry-item";
@@ -432,8 +453,8 @@
            status === "loading" ? "pill-loading" : "pill-success");
         pill.textContent =
           status === "pending" ? "Pending bill" :
-          status === "loading" ? "Bill partial / waiting" :
-          "Bill paid";
+          status === "loading" ? "Payment started (locked)" :
+          "Bill paid (locked)";
         left.appendChild(pill);
       }
 
@@ -445,7 +466,7 @@
       amountSpan.textContent = `${Number(r.kg||0)} kg × ₹${Number(r.rate||0)} = ₹${Math.round(total)}`;
       right.appendChild(amountSpan);
 
-      const locked = isLockedDate(customerId, dateIso);
+      const locked = isLockedDateFromBills(dateIso);
 
       const editBtn = document.createElement("button");
       editBtn.className = "mini-btn";
@@ -455,7 +476,7 @@
       editBtn.addEventListener("click", async () => {
         dateInput.value = dateIso;
         await fillInputsIfExists(customerId, dateIso);
-        showStatus(locked ? "Locked date (payment started)." : "Edit loaded. Update kg/rate and Save.", !locked);
+        showStatus(locked ? "This date is locked (payment started)." : "Edit loaded. Update kg/rate and Save.", !locked);
         window.scrollTo({ top: 0, behavior: "smooth" });
       });
 
@@ -474,7 +495,6 @@
           await deleteEntry(customerId, dateIso);
           showStatus(`Deleted: ${dateIso}`, true);
 
-          // If deleting currently selected date, clear inputs
           if (dateInput.value === dateIso) {
             kgInput.value = "";
             rateInput.value = "";
@@ -513,7 +533,10 @@
       return;
     }
 
-    const locked = isLockedDate(customerId, iso);
+    // ensure bills cache loaded first
+    await loadBills(customerId);
+
+    const locked = isLockedDateFromBills(iso);
     saveBtn.disabled = locked;
     if (locked) {
       showStatus("This date is locked (payment started).", false);
@@ -536,7 +559,10 @@
     if (!dateVal) return showStatus("Please select a date.", false);
     if (dateVal > t) return showStatus("Future dates are not allowed.", false);
 
-    if (isLockedDate(customerId, dateVal)) {
+    // ensure bills cache loaded first
+    await loadBills(customerId);
+
+    if (isLockedDateFromBills(dateVal)) {
       return showStatus("This date is locked (payment started).", false);
     }
 
@@ -548,7 +574,7 @@
     }
 
     try {
-      // ✅ If entry exists, ask overwrite in Gujarati
+      // If entry exists, ask overwrite in Gujarati
       const existing = await getEntry(customerId, dateVal);
       if (existing) {
         const ok = confirm(
@@ -565,7 +591,7 @@
 
       showStatus(`Saved: ${dateVal} → ${kg} kg × ₹${rate}`, true);
 
-      // ✅ Reset textboxes after save (keep date)
+      // Reset textboxes after save (keep date)
       kgInput.value = "";
       rateInput.value = "";
 
@@ -585,6 +611,9 @@
       return;
     }
 
+    // ✅ Load bills from CLOUD first (so locking is correct immediately)
+    await loadBills(customerId);
+
     const c = await getActiveCustomer();
     if (c) {
       acName.textContent = c.displayName || "Unnamed customer";
@@ -597,8 +626,7 @@
     applyDateLimits();
     setDefaultDate();
 
-    // Load inputs for today (unless locked)
-    const locked = isLockedDate(customerId, dateInput.value);
+    const locked = isLockedDateFromBills(dateInput.value);
     saveBtn.disabled = locked;
     if (!locked) await fillInputsIfExists(customerId, dateInput.value);
 
