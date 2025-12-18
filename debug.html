@@ -4,116 +4,246 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>ACS Debug</title>
+
+  <link rel="stylesheet" href="base.css">
+
   <style>
-    body{font-family:system-ui,Segoe UI,Arial;margin:16px;background:#0b1220;color:#e5e7eb}
-    .card{background:#111827;border:1px solid #243042;border-radius:14px;padding:14px;max-width:900px}
-    .row{display:flex;gap:10px;flex-wrap:wrap}
-    button{padding:10px 12px;border-radius:10px;border:none;font-weight:800;cursor:pointer}
-    .ok{color:#34d399}
-    .bad{color:#fb7185}
-    code{background:#0b1220;padding:2px 6px;border-radius:8px}
-    pre{white-space:pre-wrap;word-break:break-word;background:#0b1220;padding:12px;border-radius:12px;border:1px solid #243042}
-    a{color:#93c5fd}
+    body{ margin:0; padding:16px; font-family:system-ui; background:#0b1220; color:#e5e7eb; }
+    .wrap{ max-width:900px; margin:0 auto; }
+    h1{ margin:0 0 12px; font-size:22px; }
+    .card{ background:#111827; border:1px solid #1f2937; border-radius:14px; padding:14px; margin-bottom:12px; }
+    .row{ display:flex; flex-wrap:wrap; gap:10px; }
+    .pill{ padding:6px 10px; border-radius:999px; font-weight:800; font-size:12px; display:inline-flex; gap:8px; align-items:center; }
+    .ok{ background:#064e3b; color:#d1fae5; border:1px solid #10b981; }
+    .bad{ background:#7f1d1d; color:#fee2e2; border:1px solid #ef4444; }
+    .muted{ color:#9ca3af; font-size:12px; }
+    button{ border:none; border-radius:999px; padding:10px 14px; font-weight:900; cursor:pointer; }
+    .btn{ background:#e5e7eb; color:#111827; }
+    .btn2{ background:#4f46e5; color:white; }
+    input{ padding:10px 12px; border-radius:10px; border:1px solid #374151; background:#0b1220; color:#e5e7eb; }
+    pre{ white-space:pre-wrap; background:#0b1220; border:1px solid #1f2937; padding:10px; border-radius:10px; overflow:auto; }
+    code{ color:#a7f3d0; }
   </style>
 </head>
+
 <body>
+<div class="wrap">
+  <h1>ACS Debug Page</h1>
+  <div class="muted">Use this page to find EXACT reason why index rows are not generating.</div>
+
   <div class="card">
-    <h2>ACS Debug Page</h2>
-    <div id="meta"></div>
-
-    <div class="row" style="margin:10px 0;">
-      <button id="btnTest">Click Test Button</button>
-      <button id="btnReload" onclick="location.reload()">Reload</button>
+    <div class="row">
+      <div id="domPill" class="pill bad">DOM: not checked</div>
+      <div id="importPill" class="pill bad">Imports: not checked</div>
+      <div id="customerPill" class="pill bad">Customer: not checked</div>
+      <div id="datesPill" class="pill bad">Date limits: not checked</div>
+      <div id="firePill" class="pill bad">Firestore: not checked</div>
     </div>
-
-    <div id="status"></div>
-    <pre id="log">Starting...\n</pre>
   </div>
 
+  <div class="card">
+    <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center;">
+      <label>From: <input type="date" id="fromDate"></label>
+      <label>To: <input type="date" id="toDate"></label>
+      <button class="btn2" id="testRowsBtn">Test Generate Rows</button>
+      <button class="btn" id="testRangeBtn">Test Cloud Range Query</button>
+    </div>
+    <div class="muted" style="margin-top:8px;">
+      This is independent from your index page. If this works, your index page has missing IDs or runtime error.
+    </div>
+  </div>
+
+  <div class="card">
+    <h3 style="margin:0 0 8px;">Output</h3>
+    <pre id="out">—</pre>
+  </div>
+
+  <div class="card">
+    <h3 style="margin:0 0 8px;">Errors</h3>
+    <pre id="err">—</pre>
+  </div>
+
+  <div class="card">
+    <h3 style="margin:0 0 8px;">Mini Table Render Test</h3>
+    <div class="muted">If you can see rows below, your DOM + JS loop is fine.</div>
+    <table style="width:100%; margin-top:10px; border-collapse:collapse;">
+      <thead>
+        <tr style="background:#0b1220;">
+          <th style="border-bottom:1px solid #1f2937; padding:8px;">Total</th>
+          <th style="border-bottom:1px solid #1f2937; padding:8px;">Calc</th>
+          <th style="border-bottom:1px solid #1f2937; padding:8px;">Date</th>
+        </tr>
+      </thead>
+      <tbody id="entriesBody"></tbody>
+    </table>
+  </div>
+</div>
+
 <script type="module">
-  const logEl = document.getElementById("log");
-  const statusEl = document.getElementById("status");
-  const metaEl = document.getElementById("meta");
+  const out = document.getElementById("out");
+  const err = document.getElementById("err");
 
-  function log(msg){
-    logEl.textContent += msg + "\n";
-    console.log(msg);
-  }
-  function ok(msg){
-    statusEl.innerHTML += `<div class="ok">✅ ${msg}</div>`;
-    log(`✅ ${msg}`);
-  }
-  function bad(msg){
-    statusEl.innerHTML += `<div class="bad">❌ ${msg}</div>`;
-    log(`❌ ${msg}`);
-  }
+  const domPill = document.getElementById("domPill");
+  const importPill = document.getElementById("importPill");
+  const customerPill = document.getElementById("customerPill");
+  const datesPill = document.getElementById("datesPill");
+  const firePill = document.getElementById("firePill");
 
-  // META (proves you’re on correct page + not cached)
-  metaEl.innerHTML = `
-    <div>URL: <code>${location.href}</code></div>
-    <div>Time: <code>${new Date().toISOString()}</code></div>
-  `;
+  function log(msg){ out.textContent += "\\n" + msg; }
+  function clearLogs(){ out.textContent = ""; err.textContent = ""; }
+  function ok(pill, text){ pill.className = "pill ok"; pill.textContent = text; }
+  function bad(pill, text){ pill.className = "pill bad"; pill.textContent = text; }
 
-  ok("Module script executed (type=module is running)");
-
-  // Button wiring test
-  document.getElementById("btnTest").addEventListener("click", () => {
-    alert("Button click works ✅ (event listeners are working)");
+  window.addEventListener("error", (e) => {
+    err.textContent += "\\n" + (e?.message || e);
   });
-  ok("Event listener attached to test button");
+  window.addEventListener("unhandledrejection", (e) => {
+    err.textContent += "\\nPromise: " + (e?.reason?.message || e?.reason || e);
+  });
 
-  // Files to test (edit if your files are inside a folder)
-  const filesToFetch = [
-    "./index.html",
-    "./firebase.js",
-    "./auth-guard.js",
-    "./db-customers.js",
-    "./db-entries.js",
-    "./session.js",
-    "./session-lock.js",
-    "./session-heartbeat.js",
-    "./logout.js"
-  ];
+  // ===== DOM CHECK =====
+  const fromDate = document.getElementById("fromDate");
+  const toDate = document.getElementById("toDate");
+  const testRowsBtn = document.getElementById("testRowsBtn");
+  const testRangeBtn = document.getElementById("testRangeBtn");
+  const entriesBody = document.getElementById("entriesBody");
 
-  ok("Testing fetch() for important files (status 200 means path is correct)");
-  for (const f of filesToFetch) {
-    try{
-      const r = await fetch(f, { cache: "no-store" });
-      if (r.ok) ok(`fetch ${f} -> ${r.status}`);
-      else bad(`fetch ${f} -> ${r.status}`);
-    }catch(e){
-      bad(`fetch ${f} failed: ${e?.message || e}`);
+  const missing = [];
+  [
+    ["fromDate", fromDate],
+    ["toDate", toDate],
+    ["testRowsBtn", testRowsBtn],
+    ["entriesBody", entriesBody],
+  ].forEach(([name, el]) => { if (!el) missing.push(name); });
+
+  if (missing.length) {
+    bad(domPill, "DOM: missing " + missing.join(", "));
+  } else {
+    ok(domPill, "DOM: OK");
+  }
+
+  // ===== DATE LIMIT CHECK =====
+  function todayIso(){
+    const t = new Date();
+    return `${t.getFullYear()}-${String(t.getMonth()+1).padStart(2,"0")}-${String(t.getDate()).padStart(2,"0")}`;
+  }
+  const t = todayIso();
+  fromDate.max = t;
+  toDate.max = t;
+  if (fromDate.max === t && toDate.max === t) ok(datesPill, "Date limits: OK");
+  else bad(datesPill, "Date limits: FAILED");
+
+  // ===== CUSTOMER CHECK =====
+  const ACTIVE_KEY = "acsActiveCustomerId";
+  const activeId = localStorage.getItem(ACTIVE_KEY) || "";
+  if (activeId) ok(customerPill, "Customer: activeId OK");
+  else bad(customerPill, "Customer: NO activeId");
+
+  // ===== IMPORTS CHECK =====
+  let listEntriesInRange = null;
+  let listCustomers = null;
+
+  try {
+    const modEntries = await import("./db-entries.js");
+    const modCustomers = await import("./db-customers.js");
+
+    listEntriesInRange = modEntries.listEntriesInRange || null;
+    listCustomers = modCustomers.listCustomers || null;
+
+    const parts = [];
+    parts.push("db-entries.js: " + Object.keys(modEntries).join(", "));
+    parts.push("db-customers.js: " + Object.keys(modCustomers).join(", "));
+
+    if (!listEntriesInRange) throw new Error("db-entries.js missing export: listEntriesInRange");
+
+    ok(importPill, "Imports: OK");
+    log("IMPORTS OK ✅");
+    log(parts.join("\\n"));
+  } catch(e) {
+    bad(importPill, "Imports: FAILED");
+    err.textContent += "\\n" + (e?.message || e);
+  }
+
+  // ===== FIRESTORE BASIC CHECK =====
+  // If imports are OK and user is logged in, range query should return.
+  // (We only check execution, not auth status here.)
+  if (listEntriesInRange) ok(firePill, "Firestore: ready");
+  else bad(firePill, "Firestore: not ready");
+
+  // ===== GENERATE ROWS TEST =====
+  function formatDateShort(d){
+    return `${String(d.getDate()).padStart(2,"0")}-${String(d.getMonth()+1).padStart(2,"0")}-${d.getFullYear()}`;
+  }
+
+  function generateRows(fromVal, toVal){
+    const start = new Date(fromVal);
+    const end = new Date(toVal);
+    entriesBody.innerHTML = "";
+    let d = new Date(start);
+    let count = 0;
+
+    while (d <= end) {
+      count++;
+      const tr = document.createElement("tr");
+
+      const td1 = document.createElement("td");
+      td1.style.padding = "8px";
+      td1.style.borderBottom = "1px solid #1f2937";
+      td1.textContent = "0";
+
+      const td2 = document.createElement("td");
+      td2.style.padding = "8px";
+      td2.style.borderBottom = "1px solid #1f2937";
+      td2.textContent = "kg × rate";
+
+      const td3 = document.createElement("td");
+      td3.style.padding = "8px";
+      td3.style.borderBottom = "1px solid #1f2937";
+      td3.textContent = formatDateShort(d);
+
+      tr.appendChild(td1);
+      tr.appendChild(td2);
+      tr.appendChild(td3);
+      entriesBody.appendChild(tr);
+
+      d.setDate(d.getDate() + 1);
     }
+    return count;
   }
 
-  // Import tests (this is the real killer test)
-  async function testImport(path){
+  testRowsBtn.addEventListener("click", () => {
+    clearLogs();
+    const f = fromDate.value;
+    const to = toDate.value;
+
+    if (!f || !to) { alert("Select from & to dates"); return; }
+    if (f > to) { alert("From > To"); return; }
+    if (f > t || to > t) { alert("Future date not allowed"); return; }
+
+    const c = generateRows(f, to);
+    log("Generated rows: " + c);
+  });
+
+  // ===== CLOUD RANGE QUERY TEST =====
+  testRangeBtn.addEventListener("click", async () => {
+    clearLogs();
+    const f = fromDate.value;
+    const to = toDate.value;
+
+    if (!listEntriesInRange) { alert("listEntriesInRange not found. Fix exports."); return; }
+    if (!activeId) { alert("No active customer selected."); return; }
+    if (!f || !to) { alert("Select from & to dates"); return; }
+
     try{
-      const m = await import(path);
-      ok(`import ${path} OK. exports: ${Object.keys(m).join(", ") || "(none)"}`);
-      return m;
+      const rows = await listEntriesInRange(activeId, f, to);
+      log("Cloud returned rows: " + (rows?.length || 0));
+      log(JSON.stringify(rows, null, 2));
     }catch(e){
-      bad(`import ${path} FAILED: ${e?.message || e}`);
-      console.error(e);
-      return null;
+      err.textContent += "\\n" + (e?.message || e);
     }
-  }
+  });
 
-  ok("Now testing module imports (exact failure will show below)");
-  const fb = await testImport("./firebase.js");
-  await testImport("./db-customers.js");
-  await testImport("./db-entries.js");
-
-  // Firebase sanity check (only checks exports exist, doesn’t login)
-  if (fb) {
-    if ("auth" in fb) ok("firebase.js exports 'auth' ✅");
-    else bad("firebase.js does NOT export 'auth' (index/auth-guard may be importing wrong name)");
-
-    if ("db" in fb) ok("firebase.js exports 'db' ✅");
-    else bad("firebase.js does NOT export 'db' (db-*.js may be importing wrong name)");
-  }
-
-  ok("Debug finished. Tell me which ❌ lines you see.");
+  out.textContent = "Ready. Pick dates, then click Test Generate Rows.";
 </script>
 </body>
 </html>
