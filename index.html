@@ -19,8 +19,16 @@
 
 <body>
 <div class="wrapper">
-  <h1>ACS Calculator</h1>
-
+  <div class="appbar">
+    <div class="appbar-left">
+      <div class="appbar-title">
+        ACS Calculator
+      </div>
+      <div class="app-subtitle">
+        Report Card
+      </div>
+    </div>
+  </div>
   <!-- ✅ Clear customer display on page -->
   <div class="active-customer-banner">
     <div class="ac-left">
@@ -31,33 +39,40 @@
     <button class="ac-btn" onclick="window.location.href='customers.html'">Change</button>
   </div>
 
-  <div class="controls">
-    <div class="field">
-      <label>From date</label>
-      <input type="date" id="fromDate">
-    </div>
-    <div class="field">
-      <label>To date</label>
-      <input type="date" id="toDate">
-    </div>
-    <div class="field">
-      <label>Default rate (₹ / kg) (optional)</label>
-      <input type="number" id="defaultRate" step="0.01" min="0" placeholder="e.g. 230">
+  <div class="panel">
+    <div class="panel-head">
+      <div class="panel-title">Generate Report</div>
+      <div class="panel-desc">Select range, fill kg × rate, then export.</div>
     </div>
 
-    <div class="buttons">
-      <button class="primary" type="button" id="generateRowsBtn">Generate rows</button>
-      <button class="secondary" type="button" id="downloadImgBtn" disabled>Generate image</button>
-      <button class="secondary" type="button" onclick="window.location.href='daily-entry.html'">Daily entry system</button>
-      <button class="secondary" type="button" onclick="window.location.href='bills.html'">Bills / Payments</button>
-      <button class="secondary" type="button" id="logoutBtn">Logout</button>
+    <div class="controls">
+      <div class="field">
+        <label>From date</label>
+        <input type="date" id="fromDate">
+      </div>
+      <div class="field">
+        <label>To date</label>
+        <input type="date" id="toDate">
+      </div>
+      <div class="field">
+        <label>Default rate (₹ / kg) (optional)</label>
+        <input type="number" id="defaultRate" step="0.01" min="0" placeholder="e.g. 230">
+      </div>
+  
+      <div class="buttons">
+        <button class="primary" type="button" id="generateRowsBtn">Generate rows</button>
+        <button class="secondary" type="button" id="downloadImgBtn" disabled>Generate image</button>
+        <button class="secondary" type="button" onclick="window.location.href='daily-entry.html'">Daily entry system</button>
+        <button class="secondary" type="button" onclick="window.location.href='bills.html'">Bills / Payments</button>
+        <button class="secondary" type="button" id="logoutBtn">Logout</button>
+      </div>
+  
+      <!-- ✅ Share row -->
+      <div class="share-row">
+        <button class="btn-whatsapp" type="button" id="whatsappBtn" disabled>Send on WhatsApp</button>
+      </div>
     </div>
-
-    <!-- ✅ Share row -->
-    <div class="share-row">
-      <button class="btn-whatsapp" type="button" id="whatsappBtn" disabled>Send on WhatsApp</button>
-    </div>
-  </div>
+  </div>    
 
   <div id="summaryCard" style="display:none; flex-direction:column;">
     <div class="card-header">
@@ -71,8 +86,10 @@
 
       <div class="range" id="summaryRange"></div>
 
-      <h3 style="float:left">Owner: IQBALHUSHEN GATA</h3>
-      <h3 style="float:right">Mobile: 9737248571</h3>
+      <div class="meta-row">
+        <div class="meta-item">Owner: IQBALHUSHEN GATA</div>
+        <div class="meta-item">Mobile: 9737248571</div>
+      </div>
     </div>
 
     <div class="card-body">
