@@ -572,34 +572,71 @@
   }
 
   function buildExportCard() {
-    const clone = summaryCard.cloneNode(true);
-    clone.id = "summaryCardExport";
-    clone.classList.add("export-card");
-    document.body.appendChild(clone);
+  const clone = summaryCard.cloneNode(true);
+  clone.id = "summaryCardExport";
+  clone.classList.add("export-card");
+  document.body.appendChild(clone);
 
-    const cloneRows = clone.querySelectorAll("tbody tr");
-    const originalRows = entriesBody.querySelectorAll("tr");
+  const cloneTbody = clone.querySelector("tbody");
+  const originalRows = entriesBody.querySelectorAll("tr");
 
-    cloneRows.forEach((row, idx) => {
-      const origRow = originalRows[idx];
-      if (!origRow) return;
+  // 🔴 Clear cloned rows first
+  cloneTbody.innerHTML = "";
 
-      const total = origRow.children[0].textContent;
-      const dateText = origRow.children[2].textContent;
+  // ✅ Copy ONLY non-zero rows into export
+  originalRows.forEach((origRow) => {
+    const totalText = (origRow.children[0].textContent || "").trim();
+    const totalVal = parseFloat(totalText.replace(/,/g, "")) || 0;
 
-      const kgInput = origRow.querySelector("input[placeholder='kg']");
-      const rateInput = origRow.querySelector("input[placeholder='rate']");
-      const kg = kgInput && kgInput.value ? kgInput.value : "0";
-      const rate = rateInput && rateInput.value ? rateInput.value : "0";
+    // ❌ Skip zero-amount rows in IMAGE only
+    if (totalVal <= 0) return;
 
-      row.children[0].textContent = total;
-      row.children[1].textContent = `${kg} × ${rate}`;
-      row.children[2].textContent = dateText;
-    });
+    const dateText = origRow.children[2].textContent;
 
-    return clone;
+    const kgInput = origRow.querySelector("input[placeholder='kg']");
+    const rateInput = origRow.querySelector("input[placeholder='rate']");
+    const kg = kgInput && kgInput.value ? kgInput.value : "0";
+    const rate = rateInput && rateInput.value ? rateInput.value : "0";
+
+    const tr = document.createElement("tr");
+
+    const tdTotal = document.createElement("td");
+    tdTotal.textContent = String(Math.round(totalVal));
+
+    const tdCalc = document.createElement("td");
+    tdCalc.textContent = `${kg} × ${rate}`;
+
+    const tdDate = document.createElement("td");
+    tdDate.textContent = dateText;
+
+    tr.appendChild(tdTotal);
+    tr.appendChild(tdCalc);
+    tr.appendChild(tdDate);
+
+    cloneTbody.appendChild(tr);
+  });
+
+  // ✅ Recalculate TOTAL for export image
+  let sum = 0;
+  cloneTbody.querySelectorAll("tr").forEach(tr => {
+    const v = parseFloat((tr.children[0].textContent || "0").replace(/,/g, ""));
+    if (!isNaN(v)) sum += v;
+  });
+
+  const cloneGrand = clone.querySelector("#grandTotalCell");
+  if (cloneGrand) {
+    cloneGrand.textContent = sum === 0 ? "0" : sum.toLocaleString("en-IN");
   }
 
+  // 🟡 Edge case: all rows were zero
+  if (cloneTbody.children.length === 0) {
+    const tr = document.createElement("tr");
+    tr.innerHTML = `<td>0</td><td>No entries</td><td>-</td>`;
+    cloneTbody.appendChild(tr);
+  }
+
+  return clone;
+}
   async function generateImageFile() {
     const customerId = getActiveCustomerId();
     if (!customerId) return null;
