@@ -207,7 +207,7 @@
   import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-auth.js";
 
   import { listCustomers } from "./db-customers.js";
-  import { listEntriesInRange, upsertEntry, deleteEntry } from "./db-entries.js";
+  import { getEntriesRange , upsertEntry, deleteEntry } from "./db-entries.js";
 
   const CUSTOMERS_KEY = "acsCustomers";      // fallback only
   const ACTIVE_KEY    = "acsActiveCustomerId";
@@ -346,7 +346,7 @@
   }
 
   async function loadEntriesMap(customerId, fromIso, toIso) {
-    const rows = await listEntriesInRange(customerId, fromIso, toIso);
+    const rows = await getEntriesRange(customerId, fromIso, toIso);
     const map = {};
     (rows || []).forEach(r => { if (r?.dateIso) map[r.dateIso] = r; });
     return map;
