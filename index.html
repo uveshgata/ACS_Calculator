@@ -134,8 +134,8 @@
     </div>
 
     <div class="buttons">
-      <button class="primary" type="button" id="generateRowsBtn" type="button">Generate rows</button>
-      <button class="secondary" type="button" id="downloadImgBtn" type="button" disabled>Generate image</button>
+      <button class="primary" type="button" id="generateRowsBtn">Generate rows</button>
+      <button class="secondary" type="button" id="downloadImgBtn" disabled>Generate image</button>
       <button class="secondary" type="button" onclick="window.location.href='daily-entry.html'">Daily entry system</button>
       <button class="secondary" type="button" onclick="window.location.href='bills.html'">Bills / Payments</button>
       <button class="secondary" type="button" id="logoutBtn">Logout</button>
@@ -143,7 +143,7 @@
 
     <!-- ✅ Share row -->
     <div class="share-row">
-      <button class="btn-whatsapp" type="button" id="whatsappBtn" type="button" disabled>Send on WhatsApp</button>
+      <button class="btn-whatsapp" type="button" id="whatsappBtn" disabled>Send on WhatsApp</button>
     </div>
   </div>
 
@@ -207,7 +207,7 @@
   import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-auth.js";
 
   import { listCustomers } from "./db-customers.js";
-  import { getEntriesRange , upsertEntry, deleteEntry } from "./db-entries.js";
+  import { getEntriesRange, upsertEntry, deleteEntry } from "./db-entries.js";
 
   const CUSTOMERS_KEY = "acsCustomers";      // fallback only
   const ACTIVE_KEY    = "acsActiveCustomerId";
@@ -255,7 +255,9 @@
       const customers = await listCustomers();
       const found = (customers || []).find(c => c.customerId === id);
       if (found) return found;
-    } catch {}
+    } catch (e) {
+      console.warn("listCustomers failed, using local fallback", e);
+    }
 
     // Fallback local
     const local = getCustomersLocal();
@@ -271,7 +273,22 @@
     const t = todayIso();
     fromDateInput.max = t;
     toDateInput.max = t;
+
+    // If user already has future value (browser cache), force it back.
+    if (fromDateInput.value && fromDateInput.value > t) fromDateInput.value = t;
+    if (toDateInput.value && toDateInput.value > t) toDateInput.value = t;
   }
+
+  // Extra safety: block future dates instantly when user changes
+  function enforceNoFuture(el) {
+    const t = todayIso();
+    if (el.value && el.value > t) {
+      alert("Future dates are not allowed.");
+      el.value = t;
+    }
+  }
+  fromDateInput.addEventListener("change", () => enforceNoFuture(fromDateInput));
+  toDateInput.addEventListener("change", () => enforceNoFuture(toDateInput));
 
   function getBillsKey(customerId){ return BILLS_KEY_PREFIX + customerId; }
 
@@ -345,121 +362,141 @@
     return `${safeFileNamePart(name)}_${toDDMMYYYY(fromVal)}_to_${toDDMMYYYY(toVal)}.png`;
   }
 
+  // ✅ IMPORTANT FIX:
+  // Your getEntriesRange() may return:
+  // - a MAP object: { "2025-12-01": {...}, ... }
+  // - OR (in some earlier version) an array.
+  // This adapter handles both.
   async function loadEntriesMap(customerId, fromIso, toIso) {
-    const rows = await getEntriesRange(customerId, fromIso, toIso);
+    const res = await getEntriesRange(customerId, fromIso, toIso);
+
+    // If it's already a map, return it directly
+    if (res && !Array.isArray(res) && typeof res === "object") {
+      // looks like {dateIso: data}
+      return res;
+    }
+
+    // If it's an array, convert to map
     const map = {};
-    (rows || []).forEach(r => { if (r?.dateIso) map[r.dateIso] = r; });
+    (res || []).forEach(r => {
+      if (r?.dateIso) map[r.dateIso] = r;
+    });
     return map;
   }
 
   // ✅ OLD FEATURE: create rows table (but entries now come from Cloud)
   async function createRows() {
-    const customerId = getActiveCustomerId();
-    if (!customerId) return alert("No active customer. Please select customer first.");
+    try {
+      const customerId = getActiveCustomerId();
+      if (!customerId) return alert("No active customer. Please select customer first.");
 
-    const fromVal = fromDateInput.value;
-    const toVal = toDateInput.value;
+      const fromVal = fromDateInput.value;
+      const toVal = toDateInput.value;
 
-    if (!fromVal || !toVal) return alert("Please select both from and to dates.");
-    if (fromVal > toVal) return alert("From date cannot be after To date.");
+      if (!fromVal || !toVal) return alert("Please select both from and to dates.");
+      if (fromVal > toVal) return alert("From date cannot be after To date.");
 
-    const t = todayIso();
-    if (fromVal > t || toVal > t) return alert("Future dates are not allowed.");
+      const t = todayIso();
+      if (fromVal > t || toVal > t) return alert("Future dates are not allowed.");
 
-    const start = new Date(fromVal);
-    const end = new Date(toVal);
+      const start = new Date(fromVal);
+      const end = new Date(toVal);
 
-    const entriesMap = await loadEntriesMap(customerId, fromVal, toVal);
+      const entriesMap = await loadEntriesMap(customerId, fromVal, toVal);
 
-    entriesBody.innerHTML = "";
+      entriesBody.innerHTML = "";
 
-    let d = new Date(start);
-    const defaultRate = parseFloat(defaultRateInput.value);
-    const useDefaultRate = !isNaN(defaultRate);
+      let d = new Date(start);
+      const defaultRate = parseFloat(defaultRateInput.value);
+      const useDefaultRate = !isNaN(defaultRate);
 
-    while (d <= end) {
-      const tr = document.createElement("tr");
+      while (d <= end) {
+        const tr = document.createElement("tr");
 
-      const totalTd = document.createElement("td");
-      totalTd.textContent = "0";
+        const totalTd = document.createElement("td");
+        totalTd.textContent = "0";
 
-      const calcTd = document.createElement("td");
-      const wrap = document.createElement("div");
-      wrap.className = "inputs-wrapper";
+        const calcTd = document.createElement("td");
+        const wrap = document.createElement("div");
+        wrap.className = "inputs-wrapper";
 
-      const kgInput = document.createElement("input");
-      kgInput.type = "number";
-      kgInput.placeholder = "kg";
-      kgInput.min = "0";
-      kgInput.step = "0.01";
+        const kgInput = document.createElement("input");
+        kgInput.type = "number";
+        kgInput.placeholder = "kg";
+        kgInput.min = "0";
+        kgInput.step = "0.01";
 
-      const rateInput = document.createElement("input");
-      rateInput.type = "number";
-      rateInput.placeholder = "rate";
-      rateInput.min = "0";
-      rateInput.step = "0.01";
+        const rateInput = document.createElement("input");
+        rateInput.type = "number";
+        rateInput.placeholder = "rate";
+        rateInput.min = "0";
+        rateInput.step = "0.01";
 
-      const isoKey = d.toISOString().slice(0,10);
-      const saved = entriesMap[isoKey];
+        const isoKey = d.toISOString().slice(0,10);
+        const saved = entriesMap[isoKey];
 
-      if (saved) {
-        kgInput.value = saved.kg ?? "";
-        rateInput.value = saved.rate ?? "";
-        const rowTotal = Number(saved.kg || 0) * Number(saved.rate || 0);
-        totalTd.textContent = rowTotal === 0 ? "0" : rowTotal.toFixed(0);
-      } else if (useDefaultRate) {
-        rateInput.value = defaultRate.toString();
+        if (saved) {
+          kgInput.value = saved.kg ?? "";
+          rateInput.value = saved.rate ?? "";
+          const rowTotal = Number(saved.kg || 0) * Number(saved.rate || 0);
+          totalTd.textContent = rowTotal === 0 ? "0" : rowTotal.toFixed(0);
+        } else if (useDefaultRate) {
+          rateInput.value = defaultRate.toString();
+        }
+
+        if (isLockedDate(customerId, isoKey)) {
+          kgInput.disabled = true;
+          rateInput.disabled = true;
+          kgInput.title = "Locked (payment started)";
+          rateInput.title = "Locked (payment started)";
+        }
+
+        wrap.appendChild(kgInput);
+        const multSpan = document.createElement("span");
+        multSpan.textContent = "×";
+        multSpan.style.alignSelf = "center";
+        wrap.appendChild(multSpan);
+        wrap.appendChild(rateInput);
+        calcTd.appendChild(wrap);
+
+        const dateTd = document.createElement("td");
+        dateTd.textContent = formatDateShort(d);
+
+        tr.appendChild(totalTd);
+        tr.appendChild(calcTd);
+        tr.appendChild(dateTd);
+        entriesBody.appendChild(tr);
+
+        function recalc() {
+          const kg = parseFloat(kgInput.value);
+          const rate = parseFloat(rateInput.value);
+          let rowTotal = 0;
+          if (!isNaN(kg) && !isNaN(rate)) rowTotal = kg * rate;
+          totalTd.textContent = rowTotal === 0 ? "0" : rowTotal.toFixed(0);
+          updateGrandTotal();
+        }
+
+        kgInput.addEventListener("input", recalc);
+        rateInput.addEventListener("input", recalc);
+
+        d.setDate(d.getDate() + 1);
       }
 
-      if (isLockedDate(customerId, isoKey)) {
-        kgInput.disabled = true;
-        rateInput.disabled = true;
-        kgInput.title = "Locked (payment started)";
-        rateInput.title = "Locked (payment started)";
-      }
+      summaryRange.textContent = formatDateDisplay(start) + " to " + formatDateDisplay(end);
+      setDaysLabel(start, end);
 
-      wrap.appendChild(kgInput);
-      const multSpan = document.createElement("span");
-      multSpan.textContent = "×";
-      multSpan.style.alignSelf = "center";
-      wrap.appendChild(multSpan);
-      wrap.appendChild(rateInput);
-      calcTd.appendChild(wrap);
+      summaryCard.style.display = "flex";
+      downloadImgBtn.disabled = false;
 
-      const dateTd = document.createElement("td");
-      dateTd.textContent = formatDateShort(d);
+      lastExportFile = null;
+      lastExportFilename = null;
+      whatsappBtn.disabled = true;
 
-      tr.appendChild(totalTd);
-      tr.appendChild(calcTd);
-      tr.appendChild(dateTd);
-      entriesBody.appendChild(tr);
-
-      function recalc() {
-        const kg = parseFloat(kgInput.value);
-        const rate = parseFloat(rateInput.value);
-        let rowTotal = 0;
-        if (!isNaN(kg) && !isNaN(rate)) rowTotal = kg * rate;
-        totalTd.textContent = rowTotal === 0 ? "0" : rowTotal.toFixed(0);
-        updateGrandTotal();
-      }
-
-      kgInput.addEventListener("input", recalc);
-      rateInput.addEventListener("input", recalc);
-
-      d.setDate(d.getDate() + 1);
+      updateGrandTotal();
+    } catch (err) {
+      console.error("createRows failed:", err);
+      alert(err?.message || "Generate rows failed. Check console for details.");
     }
-
-    summaryRange.textContent = formatDateDisplay(start) + " to " + formatDateDisplay(end);
-    setDaysLabel(start, end);
-
-    summaryCard.style.display = "flex";
-    downloadImgBtn.disabled = false;
-
-    lastExportFile = null;
-    lastExportFilename = null;
-    whatsappBtn.disabled = true;
-
-    updateGrandTotal();
   }
 
   function ddmmyyyyToIso(dateText) {
@@ -568,7 +605,6 @@
     if (!customerId) return null;
     if (summaryCard.style.display === "none") return null;
 
-    // ✅ sync + bill (same as old, but cloud sync)
     await syncReportEditsToDailyEntriesCloud(customerId);
     upsertBillForCurrentRange(customerId);
 
@@ -608,7 +644,6 @@
       if (!f) return;
     }
 
-    // 1) share sheet (best)
     try {
       if (navigator.canShare && navigator.canShare({ files: [lastExportFile] })) {
         const msgText =
@@ -625,7 +660,6 @@
       }
     } catch {}
 
-    // 2) direct chat
     const msg = encodeURIComponent(
       `તમારો રિપોર્ટ કાર્ડ તૈયાર છે.\nFile: ${lastExportFilename || "report-card.png"}`
     );
@@ -636,12 +670,11 @@
       return;
     }
 
-    // 3) generic
     window.open(`https://wa.me/?text=${msg}`, "_blank");
     alert("Customer phone not available. WhatsApp opened—please choose contact and send.");
   }
 
-  // ✅ Bind buttons (fixes your “buttons not working” issue)
+  // ✅ Bind buttons
   generateRowsBtn.addEventListener("click", (e) => {
     e.preventDefault();
     createRows();
@@ -649,20 +682,19 @@
   downloadImgBtn.addEventListener("click", downloadImage);
   whatsappBtn.addEventListener("click", sendOnWhatsApp);
 
-  // ✅ Logout fixed (does not depend on inline onclick)
+  // ✅ Logout fixed
   logoutBtn.addEventListener("click", async () => {
     try {
-      // if your logout.js already provides window.acsLogout, use it
       if (window.acsLogout) return window.acsLogout();
       await signOut(auth);
     } catch {}
     window.location.href = "login.html";
   });
 
-  // ✅ Boot: date max must work
+  // ✅ Boot
   applyDateLimits();
 
-  // ✅ Load active customer + banner once auth is ready
+  // ✅ Load active customer once auth is ready
   onAuthStateChanged(auth, async (user) => {
     if (!user) return;
 
