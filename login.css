@@ -1,181 +1,242 @@
 /* ===============================
-   LOGIN.CSS – Admin Login Screen
+   LOGIN.CSS – Premium Admin Login
    Used ONLY by login.html
    =============================== */
 
 :root{
-  --bg-1: #eef2ff;
-  --bg-2: #e5e7eb;
+  --bg1:#0b1220;
+  --bg2:#0f172a;
+  --card: rgba(255,255,255,0.07);
+  --cardBorder: rgba(255,255,255,0.12);
 
-  --card: rgba(255,255,255,0.86);
-  --cardBorder: rgba(229,231,235,0.9);
-  --text: #111827;
-  --muted: #6b7280;
+  --text:#e5e7eb;
+  --muted:#9ca3af;
 
-  --primaryA: #4f46e5;
-  --primaryB: #7c3aed;
+  --accent1:#7c3aed;
+  --accent2:#4f46e5;
+  --accent3:#22c55e;
 
-  --danger: #b91c1c;
-  --success: #047857;
+  --shadow: 0 18px 60px rgba(0,0,0,0.55);
+  --softShadow: 0 10px 24px rgba(0,0,0,0.35);
 
-  --shadow: 0 14px 34px rgba(0,0,0,0.10);
+  --ring: 0 0 0 4px rgba(124,58,237,0.22);
 }
 
-/* base.css already styles body/wrapper/h1 – here we “enhance” only */
+/* Override base.css page background for premium login only */
 body{
-  background: radial-gradient(circle at top, var(--bg-1), var(--bg-2));
-}
-
-/* Top branding */
-h1{
-  font-weight: 1000;
-  letter-spacing: .02em;
-}
-
-/* Card */
-.login-card{
-  background: var(--card);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-
-  border: 1px solid var(--cardBorder);
-  border-radius: 22px;
+  margin:0;
   padding: 18px;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  display:flex;
+  justify-content:center;
+
+  background:
+    radial-gradient(900px 420px at 20% 0%, rgba(124,58,237,0.35), transparent 60%),
+    radial-gradient(900px 420px at 80% 10%, rgba(79,70,229,0.28), transparent 60%),
+    radial-gradient(900px 420px at 50% 120%, rgba(34,197,94,0.16), transparent 60%),
+    linear-gradient(180deg, var(--bg1), var(--bg2));
+  color: var(--text);
+}
+
+/* Keep wrapper width, but more “app” spacing */
+.wrapper{
+  width: 100%;
+  max-width: 520px;
+}
+
+/* Brand header (premium app bar feel) */
+h1{
+  margin: 4px 0 14px;
+  text-align:center;
+  font-size: 20px;
+  font-weight: 1000;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: rgba(255,255,255,0.92);
+}
+
+h1::after{
+  content:"";
+  display:block;
+  width: 84px;
+  height: 3px;
+  margin: 10px auto 0;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--accent1), var(--accent2));
+  opacity: .85;
+}
+
+/* Premium card */
+.login-card{
+  position: relative;
+  overflow: hidden;
+
+  border-radius: 26px;
+  border: 1px solid var(--cardBorder);
+  background: var(--card);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
 
   box-shadow: var(--shadow);
-  margin-top: 12px;
-  overflow: hidden;
-  position: relative;
+  padding: 18px;
 }
 
-/* Soft glow accent */
+/* Glow edges */
 .login-card::before{
   content:"";
   position:absolute;
-  inset:-1px;
-  background: radial-gradient(800px 240px at 50% -20%,
-    rgba(79,70,229,0.25),
-    transparent 55%);
+  inset:-2px;
+  background:
+    radial-gradient(500px 220px at 25% 0%, rgba(124,58,237,0.35), transparent 55%),
+    radial-gradient(500px 220px at 75% 0%, rgba(79,70,229,0.30), transparent 55%),
+    radial-gradient(700px 300px at 50% 115%, rgba(34,197,94,0.14), transparent 60%);
   pointer-events:none;
 }
 
-.login-title{
-  position: relative;
-  font-size: 16px;
-  font-weight: 1000;
-  color: var(--text);
-  margin: 0 0 14px;
-  text-align: center;
+/* Subtle dotted texture */
+.login-card::after{
+  content:"";
+  position:absolute;
+  inset:0;
+  background-image:
+    radial-gradient(rgba(255,255,255,0.06) 1px, transparent 1px);
+  background-size: 14px 14px;
+  opacity: .45;
+  pointer-events:none;
+  mask-image: radial-gradient(circle at 50% 20%, black 35%, transparent 75%);
 }
 
-.field{
+/* Inner content is above overlays */
+.login-card > *{
   position: relative;
+  z-index: 1;
+}
+
+.login-title{
+  margin: 6px 0 14px;
+  text-align:center;
+  font-size: 15px;
+  font-weight: 1000;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: rgba(255,255,255,0.88);
+}
+
+/* Fields */
+.field{
   margin-bottom: 12px;
 }
 
 .field label{
   display:block;
+  margin-bottom: 6px;
   font-size: 12px;
   font-weight: 900;
-  color: #374151;
-  margin-bottom: 6px;
-  letter-spacing: .01em;
+  letter-spacing: .02em;
+  color: rgba(229,231,235,0.85);
 }
 
-/* Inputs */
+/* Premium input */
 .field input{
-  width: 100%;
+  width:100%;
   padding: 12px 12px;
-  border-radius: 14px;
-  border: 1px solid #d1d5db;
-  font-size: 15px;
+  border-radius: 16px;
+  border: 1px solid rgba(255,255,255,0.14);
+  background: rgba(15,23,42,0.65);
+  color: rgba(255,255,255,0.92);
+
+  font-size: 14px;
   outline: none;
-  transition: .15s;
-  background: rgba(255,255,255,0.92);
+  transition: .15s ease;
+  box-shadow: inset 0 0 0 1px rgba(0,0,0,0.10);
+}
+
+.field input::placeholder{
+  color: rgba(156,163,175,0.72);
 }
 
 .field input:focus{
-  border-color: #6366f1;
-  box-shadow: 0 0 0 3px rgba(99,102,241,.22);
+  border-color: rgba(124,58,237,0.55);
+  box-shadow: var(--ring);
+  transform: translateY(-1px);
 }
-
-/* Optional: password reveal button (works if you add later) */
-.pw-wrap{
-  position: relative;
-}
-.pw-toggle{
-  position:absolute;
-  right: 10px;
-  top: 50%;
-  transform: translateY(-50%);
-  border: none;
-  background: rgba(229,231,235,0.9);
-  color: #111827;
-  font-weight: 900;
-  border-radius: 999px;
-  padding: 6px 10px;
-  cursor: pointer;
-}
-.pw-toggle:active{ transform: translateY(-50%) scale(0.98); }
 
 /* Buttons */
 .btn{
-  width: 100%;
-  border: none;
+  width:100%;
+  border:none;
   border-radius: 999px;
   padding: 12px 14px;
   font-size: 14px;
   font-weight: 1000;
-  cursor: pointer;
-  transition: .15s;
-  letter-spacing: .01em;
+  letter-spacing: .02em;
+  cursor:pointer;
+  transition: .15s ease;
 }
 
+/* Primary premium gradient */
 .btn.primary{
-  background: linear-gradient(135deg, var(--primaryA), var(--primaryB));
-  color:#fff;
-  box-shadow: 0 12px 26px rgba(88,80,236,0.32);
+  color: white;
+  background:
+    radial-gradient(120px 70px at 20% 20%, rgba(255,255,255,0.22), transparent 60%),
+    linear-gradient(135deg, var(--accent1), var(--accent2));
+  box-shadow: 0 18px 38px rgba(124,58,237,0.35);
 }
 
-.btn.secondary{
-  margin-top: 10px;
-  background: rgba(229,231,235,0.95);
-  color: var(--text);
-}
-
-.btn:active:not(:disabled){
+.btn.primary:active{
   transform: translateY(1px);
 }
 
-.btn:disabled{
-  opacity:.55;
-  cursor:not-allowed;
-  box-shadow:none;
+/* Secondary */
+.btn.secondary{
+  margin-top: 10px;
+  color: rgba(255,255,255,0.90);
+  background: rgba(255,255,255,0.10);
+  border: 1px solid rgba(255,255,255,0.14);
+  box-shadow: var(--softShadow);
 }
 
-/* Messages */
+.btn.secondary:active{
+  transform: translateY(1px);
+}
+
+/* Disabled */
+.btn:disabled{
+  opacity: .55;
+  cursor: not-allowed;
+  box-shadow: none;
+  transform: none;
+}
+
+/* Message */
 .msg{
   margin-top: 12px;
+  text-align:center;
   font-size: 13px;
-  text-align: center;
   font-weight: 900;
   word-break: break-word;
 }
 
-.msg.ok{ color: var(--success); }
-.msg.err{ color: var(--danger); }
+.msg.ok{ color: #34d399; }
+.msg.err{ color: #fb7185; }
 
+/* Hint box */
 .hint{
   margin-top: 12px;
+  text-align:center;
   font-size: 12px;
-  color: var(--muted);
-  text-align: center;
-  line-height: 1.45;
+  line-height: 1.5;
+  color: rgba(156,163,175,0.90);
   font-weight: 700;
+  padding: 10px 10px;
+  border-radius: 16px;
+  border: 1px solid rgba(255,255,255,0.10);
+  background: rgba(15,23,42,0.35);
 }
 
-/* Better spacing on very small screens */
+/* Mobile polish */
 @media (max-width: 380px){
-  .login-card{ padding: 16px; border-radius: 18px; }
-  .field input{ font-size: 14px; padding: 11px 12px; }
+  body{ padding: 12px; }
+  .login-card{ padding: 16px; border-radius: 22px; }
+  .field input{ border-radius: 14px; }
 }
