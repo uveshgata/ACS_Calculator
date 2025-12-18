@@ -1,4 +1,3 @@
-
 // db-bills.js
 // Cloud storage for BILLS (per admin + per customer)
 // Path: admins/{uid}/customers/{customerId}/bills/{billId}
@@ -49,11 +48,16 @@ function requireBillId(billId) {
   return id;
 }
 
+function requireIsoDate(s) {
+  const v = String(s || "").trim();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(v)) throw new Error("Invalid date");
+  return v;
+}
+
 async function getUidOrThrow() {
   const u = auth.currentUser;
   if (u && u.uid) return u.uid;
 
-  // Wait for auth
   const uid = await new Promise((resolve, reject) => {
     const unsub = onAuthStateChanged(auth, (user) => {
       unsub();
@@ -81,27 +85,113 @@ function statusFromAmounts(total, paid) {
   return "success";
 }
 
-// ---------- public API ----------
+// Stable bill id for same range (so same range updates same bill)
+function rangeBillId(fromIso, toIso) {
+  return `RANGE-${fromIso}_to_${toIso}`;
+}
+
+// ---------- exports used by INDEX ----------
 
 /**
- * Create/Update bill for range (from-to).
- * If billId is missing, you can generate one outside, or use "BILL-<timestamp>".
+ * Create/Update bill for current range coming from index.html report.
+ * - Uses stable id RANGE-YYYY-MM-DD_to_YYYY-MM-DD so it doesn't create duplicates
+ * - If bill exists and status is NOT pending => do NOT change total (keep locked)
+ * - If bill exists and pending => update total
+ * - paid is preserved always (unless doc doesn't exist)
+ */
+export async function upsertBillFromReport(customerId, { from, to, total }) {
+  const cid = requireCustomerId(customerId);
+  const uid = await getUidOrThrow();
+
+  const fromIso = requireIsoDate(from);
+  const toIso = requireIsoDate(to);
+  if (fromIso > toIso) throw new Error("from > to");
+
+  const t = Number(total || 0);
+  if (!Number.isFinite(t) || t < 0) throw new Error("Invalid total");
+
+  const billId = rangeBillId(fromIso, toIso);
+  const ref = billDocRef(uid, cid, billId);
+
+  const snap = await getDoc(ref);
+
+  if (!snap.exists()) {
+    // create new bill
+    const paid = 0;
+    const status = statusFromAmounts(t, paid);
+
+    await setDoc(ref, {
+      id: billId,
+      billId,
+      from: fromIso,
+      to: toIso,
+      total: t,
+      paid,
+      status,
+      createdAt: new Date().toISOString(),
+      updatedAt: serverTimestamp()
+    }, { merge: true });
+
+    return true;
+  }
+
+  const existing = snap.data() || {};
+  const existingPaid = Number(existing.paid || 0);
+  const existingStatus = String(existing.status || statusFromAmounts(existing.total, existingPaid));
+
+  // If already locked, keep total untouched
+  if (existingStatus === "loading" || existingStatus === "success") {
+    await updateDoc(ref, { updatedAt: serverTimestamp() });
+    return true;
+  }
+
+  // pending => allow total update
+  const newStatus = statusFromAmounts(t, existingPaid);
+
+  await updateDoc(ref, {
+    from: fromIso,
+    to: toIso,
+    total: t,
+    status: newStatus,
+    updatedAt: serverTimestamp()
+  });
+
+  return true;
+}
+
+/**
+ * Helper for index.html to check locking using cached bills list.
+ */
+export function isDateLockedByBills(billsArray, dateIso) {
+  const d = String(dateIso || "").trim();
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(d)) return false;
+
+  const bills = Array.isArray(billsArray) ? billsArray : [];
+
+  return bills.some(b => {
+    if (!b?.from || !b?.to) return false;
+    if (!(b.from <= d && d <= b.to)) return false;
+    const s = String(b.status || statusFromAmounts(b.total, b.paid));
+    return s === "loading" || s === "success";
+  });
+}
+
+// ---------- existing public API (kept) ----------
+
+/**
+ * Create/Update bill by explicit billId (still useful if bills page uses it).
  * Data required: {from, to, total}
- * Optional: {paid}
+ * Optional: {paid, createdAt}
  */
 export async function upsertBill(customerId, billId, data) {
   const cid = requireCustomerId(customerId);
   const bid = requireBillId(billId);
   const uid = await getUidOrThrow();
 
-  const from = String(data?.from || "").trim();
-  const to = String(data?.to || "").trim();
+  const from = requireIsoDate(data?.from);
+  const to = requireIsoDate(data?.to);
   const total = Number(data?.total || 0);
   const paid = Number(data?.paid || 0);
-
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(from) || !/^\d{4}-\d{2}-\d{2}$/.test(to)) {
-    throw new Error("Invalid from/to");
-  }
 
   const status = statusFromAmounts(total, paid);
 
@@ -143,7 +233,6 @@ export async function listBills(customerId, take = 200) {
 
 /**
  * Add payment to a bill (increments paid).
- * billId is required.
  */
 export async function addPayment(customerId, billId, amount) {
   const cid = requireCustomerId(customerId);
