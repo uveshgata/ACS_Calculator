@@ -134,8 +134,8 @@
     </div>
 
     <div class="buttons">
-      <button class="primary" id="generateRowsBtn" type="button">Generate rows</button>
-      <button class="secondary" id="downloadImgBtn" type="button" disabled>Generate image</button>
+      <button class="primary" type="button" id="generateRowsBtn" type="button">Generate rows</button>
+      <button class="secondary" type="button" id="downloadImgBtn" type="button" disabled>Generate image</button>
       <button class="secondary" type="button" onclick="window.location.href='daily-entry.html'">Daily entry system</button>
       <button class="secondary" type="button" onclick="window.location.href='bills.html'">Bills / Payments</button>
       <button class="secondary" type="button" id="logoutBtn">Logout</button>
@@ -143,7 +143,7 @@
 
     <!-- ✅ Share row -->
     <div class="share-row">
-      <button class="btn-whatsapp" id="whatsappBtn" type="button" disabled>Send on WhatsApp</button>
+      <button class="btn-whatsapp" type="button" id="whatsappBtn" type="button" disabled>Send on WhatsApp</button>
     </div>
   </div>
 
@@ -642,7 +642,10 @@
   }
 
   // ✅ Bind buttons (fixes your “buttons not working” issue)
-  generateRowsBtn.addEventListener("click", createRows);
+  generateRowsBtn.addEventListener("click", (e) => {
+    e.preventDefault();
+    createRows();
+  });
   downloadImgBtn.addEventListener("click", downloadImage);
   whatsappBtn.addEventListener("click", sendOnWhatsApp);
 
