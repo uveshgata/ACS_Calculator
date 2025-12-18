@@ -27,8 +27,10 @@ body{
   margin:0;
   padding: 18px;
   font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  min-height:100svh;
   display:flex;
   justify-content:center;
+  align-item:center;
 
   background:
     radial-gradient(900px 420px at 20% 0%, rgba(124,58,237,0.35), transparent 60%),
@@ -42,6 +44,7 @@ body{
 .wrapper{
   width: 100%;
   max-width: 520px;
+  transform:translateY(-4vh);
 }
 
 /* Brand header (premium app bar feel) */
