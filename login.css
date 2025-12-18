@@ -30,7 +30,7 @@ body{
   min-height:100svh;
   display:flex;
   justify-content:center;
-  align-item:center;
+  align-items:center;
 
   background:
     radial-gradient(900px 420px at 20% 0%, rgba(124,58,237,0.35), transparent 60%),
