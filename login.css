@@ -1,0 +1,181 @@
+/* ===============================
+   LOGIN.CSS – Admin Login Screen
+   Used ONLY by login.html
+   =============================== */
+
+:root{
+  --bg-1: #eef2ff;
+  --bg-2: #e5e7eb;
+
+  --card: rgba(255,255,255,0.86);
+  --cardBorder: rgba(229,231,235,0.9);
+  --text: #111827;
+  --muted: #6b7280;
+
+  --primaryA: #4f46e5;
+  --primaryB: #7c3aed;
+
+  --danger: #b91c1c;
+  --success: #047857;
+
+  --shadow: 0 14px 34px rgba(0,0,0,0.10);
+}
+
+/* base.css already styles body/wrapper/h1 – here we “enhance” only */
+body{
+  background: radial-gradient(circle at top, var(--bg-1), var(--bg-2));
+}
+
+/* Top branding */
+h1{
+  font-weight: 1000;
+  letter-spacing: .02em;
+}
+
+/* Card */
+.login-card{
+  background: var(--card);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+
+  border: 1px solid var(--cardBorder);
+  border-radius: 22px;
+  padding: 18px;
+
+  box-shadow: var(--shadow);
+  margin-top: 12px;
+  overflow: hidden;
+  position: relative;
+}
+
+/* Soft glow accent */
+.login-card::before{
+  content:"";
+  position:absolute;
+  inset:-1px;
+  background: radial-gradient(800px 240px at 50% -20%,
+    rgba(79,70,229,0.25),
+    transparent 55%);
+  pointer-events:none;
+}
+
+.login-title{
+  position: relative;
+  font-size: 16px;
+  font-weight: 1000;
+  color: var(--text);
+  margin: 0 0 14px;
+  text-align: center;
+}
+
+.field{
+  position: relative;
+  margin-bottom: 12px;
+}
+
+.field label{
+  display:block;
+  font-size: 12px;
+  font-weight: 900;
+  color: #374151;
+  margin-bottom: 6px;
+  letter-spacing: .01em;
+}
+
+/* Inputs */
+.field input{
+  width: 100%;
+  padding: 12px 12px;
+  border-radius: 14px;
+  border: 1px solid #d1d5db;
+  font-size: 15px;
+  outline: none;
+  transition: .15s;
+  background: rgba(255,255,255,0.92);
+}
+
+.field input:focus{
+  border-color: #6366f1;
+  box-shadow: 0 0 0 3px rgba(99,102,241,.22);
+}
+
+/* Optional: password reveal button (works if you add later) */
+.pw-wrap{
+  position: relative;
+}
+.pw-toggle{
+  position:absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  border: none;
+  background: rgba(229,231,235,0.9);
+  color: #111827;
+  font-weight: 900;
+  border-radius: 999px;
+  padding: 6px 10px;
+  cursor: pointer;
+}
+.pw-toggle:active{ transform: translateY(-50%) scale(0.98); }
+
+/* Buttons */
+.btn{
+  width: 100%;
+  border: none;
+  border-radius: 999px;
+  padding: 12px 14px;
+  font-size: 14px;
+  font-weight: 1000;
+  cursor: pointer;
+  transition: .15s;
+  letter-spacing: .01em;
+}
+
+.btn.primary{
+  background: linear-gradient(135deg, var(--primaryA), var(--primaryB));
+  color:#fff;
+  box-shadow: 0 12px 26px rgba(88,80,236,0.32);
+}
+
+.btn.secondary{
+  margin-top: 10px;
+  background: rgba(229,231,235,0.95);
+  color: var(--text);
+}
+
+.btn:active:not(:disabled){
+  transform: translateY(1px);
+}
+
+.btn:disabled{
+  opacity:.55;
+  cursor:not-allowed;
+  box-shadow:none;
+}
+
+/* Messages */
+.msg{
+  margin-top: 12px;
+  font-size: 13px;
+  text-align: center;
+  font-weight: 900;
+  word-break: break-word;
+}
+
+.msg.ok{ color: var(--success); }
+.msg.err{ color: var(--danger); }
+
+.hint{
+  margin-top: 12px;
+  font-size: 12px;
+  color: var(--muted);
+  text-align: center;
+  line-height: 1.45;
+  font-weight: 700;
+}
+
+/* Better spacing on very small screens */
+@media (max-width: 380px){
+  .login-card{ padding: 16px; border-radius: 18px; }
+  .field input{ font-size: 14px; padding: 11px 12px; }
+}
