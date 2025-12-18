@@ -209,9 +209,11 @@
   import { listCustomers } from "./db-customers.js";
   import { getEntriesRange, upsertEntry, deleteEntry } from "./db-entries.js";
 
+  // ✅ NEW: bills in cloud
+  import { upsertBillFromReport, listBills, isDateLockedByBills } from "./db-bills.js";
+
   const CUSTOMERS_KEY = "acsCustomers";      // fallback only
   const ACTIVE_KEY    = "acsActiveCustomerId";
-  const BILLS_KEY_PREFIX = "acsBills:";      // bills stay local like old file
 
   const acName = document.getElementById("acName");
   const acSub  = document.getElementById("acSub");
@@ -237,6 +239,9 @@
 
   let activeCustomer = null;
   let customerPhoneDigits = "";
+
+  // ✅ cache bills for locking checks (cloud)
+  let billsCache = [];
 
   function getActiveCustomerId() {
     try { return localStorage.getItem(ACTIVE_KEY) || ""; } catch { return ""; }
@@ -290,28 +295,26 @@
   fromDateInput.addEventListener("change", () => enforceNoFuture(fromDateInput));
   toDateInput.addEventListener("change", () => enforceNoFuture(toDateInput));
 
-  function getBillsKey(customerId){ return BILLS_KEY_PREFIX + customerId; }
-
-  function getBills(customerId) {
-    try { return JSON.parse(localStorage.getItem(getBillsKey(customerId))) || []; } catch { return []; }
-  }
-
-  function setBills(customerId, bills) {
-    try { localStorage.setItem(getBillsKey(customerId), JSON.stringify(bills)); } catch {}
-  }
-
   function statusFromAmounts(bill) {
-    const total = bill.total || 0;
-    const paid  = bill.paid  || 0;
+    const total = Number(bill?.total || 0);
+    const paid  = Number(bill?.paid  || 0);
     if (total <= 0) return "pending";
     if (paid <= 0) return "pending";
     if (paid < total) return "loading";
     return "success";
   }
 
+  // ✅ Cloud lock check (same behavior as before)
   function isLockedDate(customerId, dateIso) {
-    const bills = getBills(customerId);
-    return bills.some(b => {
+    // uses cached bills (loaded when auth ready)
+    // and ALSO supports a direct helper from db-bills.js if you added it
+    try {
+      if (typeof isDateLockedByBills === "function") {
+        return isDateLockedByBills(billsCache, dateIso);
+      }
+    } catch {}
+    // fallback: local check in this file
+    return (billsCache || []).some(b => {
       if (!b.from || !b.to) return false;
       if (!(b.from <= dateIso && dateIso <= b.to)) return false;
       const s = statusFromAmounts(b);
@@ -363,20 +366,14 @@
   }
 
   // ✅ IMPORTANT FIX:
-  // Your getEntriesRange() may return:
-  // - a MAP object: { "2025-12-01": {...}, ... }
-  // - OR (in some earlier version) an array.
-  // This adapter handles both.
+  // getEntriesRange() may return MAP or Array
   async function loadEntriesMap(customerId, fromIso, toIso) {
     const res = await getEntriesRange(customerId, fromIso, toIso);
 
-    // If it's already a map, return it directly
     if (res && !Array.isArray(res) && typeof res === "object") {
-      // looks like {dateIso: data}
-      return res;
+      return res; // already map {dateIso: data}
     }
 
-    // If it's an array, convert to map
     const map = {};
     (res || []).forEach(r => {
       if (r?.dateIso) map[r.dateIso] = r;
@@ -384,7 +381,7 @@
     return map;
   }
 
-  // ✅ OLD FEATURE: create rows table (but entries now come from Cloud)
+  // ✅ OLD FEATURE: create rows table (cloud entries)
   async function createRows() {
     try {
       const customerId = getActiveCustomerId();
@@ -506,7 +503,7 @@
     return `${yyyy}-${mm.padStart(2,"0")}-${dd.padStart(2,"0")}`;
   }
 
-  // ✅ OLD FEATURE: sync report edits into storage (now: Cloud)
+  // ✅ OLD FEATURE: sync report edits into daily entries (cloud)
   async function syncReportEditsToDailyEntriesCloud(customerId) {
     const t = todayIso();
     const ops = [];
@@ -531,119 +528,111 @@
     await Promise.all(ops);
   }
 
-  // ✅ OLD BILL LOGIC preserved (local)
-  function upsertBillForCurrentRange(customerId) {
+  // ✅ REPLACEMENT: bill upsert in CLOUD (replaces local storage)
+  async function upsertBillForCurrentRangeCloud(customerId) {
     const fromVal = fromDateInput.value;
     const toVal = toDateInput.value;
     if (!fromVal || !toVal) return;
 
+    // total from current table (same as old logic)
     let total = 0;
     entriesBody.querySelectorAll("tr").forEach(tr => {
       const val = parseFloat(tr.children[0].textContent.replace(/,/g, ""));
       if (!isNaN(val)) total += val;
     });
 
-    const bills = getBills(customerId);
-    const idx = bills.findIndex(b => b.from === fromVal && b.to === toVal);
+    if (total <= 0) return;
 
-    if (idx === -1) {
-      if (total <= 0) return;
-      bills.push({
-        id: "BILL-" + Date.now(),
-        from: fromVal,
-        to: toVal,
-        total,
-        paid: 0,
-        status: "pending",
-        createdAt: new Date().toISOString()
-      });
-      setBills(customerId, bills);
-      return;
+    // ✅ Create/update bill doc in Firestore.
+    // IMPORTANT: db-bills.js must keep paid intact + only update totals if pending
+    await upsertBillFromReport(customerId, {
+      from: fromVal,
+      to: toVal,
+      total
+    });
+
+    // refresh cache (so locking instantly matches cloud)
+    try {
+      billsCache = await listBills(customerId);
+    } catch {}
+  }
+
+  // ✅ IMAGE: keep your “skip zero rows in image” feature (unchanged)
+  function buildExportCard() {
+    const clone = summaryCard.cloneNode(true);
+    clone.id = "summaryCardExport";
+    clone.classList.add("export-card");
+    document.body.appendChild(clone);
+
+    const cloneTbody = clone.querySelector("tbody");
+    const originalRows = entriesBody.querySelectorAll("tr");
+
+    // Clear cloned rows
+    cloneTbody.innerHTML = "";
+
+    // Copy ONLY non-zero rows into export
+    originalRows.forEach((origRow) => {
+      const totalText = (origRow.children[0].textContent || "").trim();
+      const totalVal = parseFloat(totalText.replace(/,/g, "")) || 0;
+
+      // Skip zero rows in IMAGE only
+      if (totalVal <= 0) return;
+
+      const dateText = origRow.children[2].textContent;
+
+      const kgInput = origRow.querySelector("input[placeholder='kg']");
+      const rateInput = origRow.querySelector("input[placeholder='rate']");
+      const kg = kgInput && kgInput.value ? kgInput.value : "0";
+      const rate = rateInput && rateInput.value ? rateInput.value : "0";
+
+      const tr = document.createElement("tr");
+
+      const tdTotal = document.createElement("td");
+      tdTotal.textContent = String(Math.round(totalVal));
+
+      const tdCalc = document.createElement("td");
+      tdCalc.textContent = `${kg} × ${rate}`;
+
+      const tdDate = document.createElement("td");
+      tdDate.textContent = dateText;
+
+      tr.appendChild(tdTotal);
+      tr.appendChild(tdCalc);
+      tr.appendChild(tdDate);
+
+      cloneTbody.appendChild(tr);
+    });
+
+    // Recalculate TOTAL for export image
+    let sum = 0;
+    cloneTbody.querySelectorAll("tr").forEach(tr => {
+      const v = parseFloat((tr.children[0].textContent || "0").replace(/,/g, ""));
+      if (!isNaN(v)) sum += v;
+    });
+
+    const cloneGrand = clone.querySelector("#grandTotalCell");
+    if (cloneGrand) {
+      cloneGrand.textContent = sum === 0 ? "0" : sum.toLocaleString("en-IN");
     }
 
-    const bill = bills[idx];
-    const stage = statusFromAmounts(bill);
-    if (stage !== "pending") return;
+    // Edge case: all rows were zero
+    if (cloneTbody.children.length === 0) {
+      const tr = document.createElement("tr");
+      tr.innerHTML = `<td>0</td><td>No entries</td><td>-</td>`;
+      cloneTbody.appendChild(tr);
+    }
 
-    bill.total = total;
-    bill.status = statusFromAmounts(bill);
-    bills[idx] = bill;
-    setBills(customerId, bills);
+    return clone;
   }
 
-  function buildExportCard() {
-  const clone = summaryCard.cloneNode(true);
-  clone.id = "summaryCardExport";
-  clone.classList.add("export-card");
-  document.body.appendChild(clone);
-
-  const cloneTbody = clone.querySelector("tbody");
-  const originalRows = entriesBody.querySelectorAll("tr");
-
-  // 🔴 Clear cloned rows first
-  cloneTbody.innerHTML = "";
-
-  // ✅ Copy ONLY non-zero rows into export
-  originalRows.forEach((origRow) => {
-    const totalText = (origRow.children[0].textContent || "").trim();
-    const totalVal = parseFloat(totalText.replace(/,/g, "")) || 0;
-
-    // ❌ Skip zero-amount rows in IMAGE only
-    if (totalVal <= 0) return;
-
-    const dateText = origRow.children[2].textContent;
-
-    const kgInput = origRow.querySelector("input[placeholder='kg']");
-    const rateInput = origRow.querySelector("input[placeholder='rate']");
-    const kg = kgInput && kgInput.value ? kgInput.value : "0";
-    const rate = rateInput && rateInput.value ? rateInput.value : "0";
-
-    const tr = document.createElement("tr");
-
-    const tdTotal = document.createElement("td");
-    tdTotal.textContent = String(Math.round(totalVal));
-
-    const tdCalc = document.createElement("td");
-    tdCalc.textContent = `${kg} × ${rate}`;
-
-    const tdDate = document.createElement("td");
-    tdDate.textContent = dateText;
-
-    tr.appendChild(tdTotal);
-    tr.appendChild(tdCalc);
-    tr.appendChild(tdDate);
-
-    cloneTbody.appendChild(tr);
-  });
-
-  // ✅ Recalculate TOTAL for export image
-  let sum = 0;
-  cloneTbody.querySelectorAll("tr").forEach(tr => {
-    const v = parseFloat((tr.children[0].textContent || "0").replace(/,/g, ""));
-    if (!isNaN(v)) sum += v;
-  });
-
-  const cloneGrand = clone.querySelector("#grandTotalCell");
-  if (cloneGrand) {
-    cloneGrand.textContent = sum === 0 ? "0" : sum.toLocaleString("en-IN");
-  }
-
-  // 🟡 Edge case: all rows were zero
-  if (cloneTbody.children.length === 0) {
-    const tr = document.createElement("tr");
-    tr.innerHTML = `<td>0</td><td>No entries</td><td>-</td>`;
-    cloneTbody.appendChild(tr);
-  }
-
-  return clone;
-}
   async function generateImageFile() {
     const customerId = getActiveCustomerId();
     if (!customerId) return null;
     if (summaryCard.style.display === "none") return null;
 
+    // ✅ sync entries + create/update bill in cloud
     await syncReportEditsToDailyEntriesCloud(customerId);
-    upsertBillForCurrentRange(customerId);
+    await upsertBillForCurrentRangeCloud(customerId);
 
     const exportCard = buildExportCard();
     const canvas = await html2canvas(exportCard, { scale: 3, backgroundColor: "#ffffff" });
@@ -674,7 +663,7 @@
     URL.revokeObjectURL(url);
   }
 
-  // ✅ OLD WhatsApp flow preserved
+  // ✅ WhatsApp flow preserved
   async function sendOnWhatsApp() {
     if (!lastExportFile) {
       const f = await generateImageFile();
@@ -731,7 +720,7 @@
   // ✅ Boot
   applyDateLimits();
 
-  // ✅ Load active customer once auth is ready
+  // ✅ Load active customer once auth is ready + load bills cache from cloud
   onAuthStateChanged(auth, async (user) => {
     if (!user) return;
 
@@ -742,7 +731,6 @@
     }
 
     activeCustomer = await getActiveCustomerCloudOrLocal();
-
     customerPhoneDigits = activeCustomer?.phone ? String(activeCustomer.phone).replace(/\D/g, "") : "";
 
     if (activeCustomer) {
@@ -755,6 +743,14 @@
       acName.textContent = "Unknown customer";
       acSub.textContent  = "";
       customerLine1.textContent = "Customer: Unknown";
+    }
+
+    // ✅ Load bills from cloud (for locking)
+    try {
+      billsCache = await listBills(customerId);
+    } catch (e) {
+      console.warn("listBills failed:", e);
+      billsCache = [];
     }
   });
 </script>
