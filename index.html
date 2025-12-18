@@ -109,7 +109,7 @@
 <div class="wrapper">
   <h1>ACS Calculator</h1>
 
-  <!-- ✅ Active customer banner -->
+  <!-- ✅ Clear customer display on page -->
   <div class="active-customer-banner">
     <div class="ac-left">
       <div class="ac-title">Active Customer</div>
@@ -134,15 +134,16 @@
     </div>
 
     <div class="buttons">
-      <button class="primary" id="generateRowsBtn">Generate rows</button>
-      <button class="secondary" id="downloadImgBtn" disabled>Generate image</button>
-      <button class="secondary" onclick="window.location.href='daily-entry.html'">Daily entry system</button>
-      <button class="secondary" onclick="window.location.href='bills.html'">Bills / Payments</button>
-      <button class="secondary" id="logoutBtn">Logout</button>
+      <button class="primary" id="generateRowsBtn" type="button">Generate rows</button>
+      <button class="secondary" id="downloadImgBtn" type="button" disabled>Generate image</button>
+      <button class="secondary" type="button" onclick="window.location.href='daily-entry.html'">Daily entry system</button>
+      <button class="secondary" type="button" onclick="window.location.href='bills.html'">Bills / Payments</button>
+      <button class="secondary" type="button" id="logoutBtn">Logout</button>
     </div>
 
+    <!-- ✅ Share row -->
     <div class="share-row">
-      <button class="btn-whatsapp" id="whatsappBtn" disabled>Send on WhatsApp</button>
+      <button class="btn-whatsapp" id="whatsappBtn" type="button" disabled>Send on WhatsApp</button>
     </div>
   </div>
 
@@ -151,6 +152,7 @@
       <h2 style="color:#D4AF37">ASHRAFI CHICKEN SHOP</h2>
       <h3>REPORT CARD</h3>
 
+      <!-- ✅ Customer line (no ID) -->
       <div class="customer-block">
         <div class="line1" id="customerLine1">Customer: —</div>
       </div>
@@ -192,26 +194,27 @@
 
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 
-<!-- ✅ Auth/session -->
+<!-- ✅ Session tools (same as your project) -->
 <script type="module" src="auth-guard.js"></script>
 <script type="module" src="session.js"></script>
-<script type="module" src="logout.js"></script>
 <script type="module" src="session-lock.js"></script>
 <script type="module" src="session-heartbeat.js"></script>
+<script type="module" src="logout.js"></script>
 
-<!-- ✅ MAIN LOGIC (Cloud Firestore entries) -->
+<!-- ✅ MAIN LOGIC (keeps old features, but makes entries CLOUD) -->
 <script type="module">
   import { auth } from "./firebase.js";
-  import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-auth.js";
+  import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-auth.js";
 
   import { listCustomers } from "./db-customers.js";
   import { listEntriesInRange, upsertEntry, deleteEntry } from "./db-entries.js";
 
-  const ACTIVE_KEY = "acsActiveCustomerId";
-  const BILLS_KEY_PREFIX = "acsBills:";
+  const CUSTOMERS_KEY = "acsCustomers";      // fallback only
+  const ACTIVE_KEY    = "acsActiveCustomerId";
+  const BILLS_KEY_PREFIX = "acsBills:";      // bills stay local like old file
 
   const acName = document.getElementById("acName");
-  const acSub = document.getElementById("acSub");
+  const acSub  = document.getElementById("acSub");
   const customerLine1 = document.getElementById("customerLine1");
 
   const fromDateInput = document.getElementById("fromDate");
@@ -228,12 +231,36 @@
   const summaryRange = document.getElementById("summaryRange");
   const daysLabel = document.getElementById("daysLabel");
 
-  let ACTIVE_CUSTOMER = null;
+  // Keep last generated image file for sharing
   let lastExportFile = null;
   let lastExportFilename = null;
 
-  // logout button uses your logout.js global function
-  logoutBtn.addEventListener("click", () => window.acsLogout && window.acsLogout());
+  let activeCustomer = null;
+  let customerPhoneDigits = "";
+
+  function getActiveCustomerId() {
+    try { return localStorage.getItem(ACTIVE_KEY) || ""; } catch { return ""; }
+  }
+
+  function getCustomersLocal() {
+    try { return JSON.parse(localStorage.getItem(CUSTOMERS_KEY)) || []; } catch { return []; }
+  }
+
+  async function getActiveCustomerCloudOrLocal() {
+    const id = getActiveCustomerId();
+    if (!id) return null;
+
+    // Cloud first
+    try {
+      const customers = await listCustomers();
+      const found = (customers || []).find(c => c.customerId === id);
+      if (found) return found;
+    } catch {}
+
+    // Fallback local
+    const local = getCustomersLocal();
+    return local.find(c => c.customerId === id) || null;
+  }
 
   function todayIso() {
     const t = new Date();
@@ -246,20 +273,13 @@
     toDateInput.max = t;
   }
 
-  function getActiveCustomerId() {
-    try { return localStorage.getItem(ACTIVE_KEY) || ""; } catch { return ""; }
+  function getBillsKey(customerId){ return BILLS_KEY_PREFIX + customerId; }
+
+  function getBills(customerId) {
+    try { return JSON.parse(localStorage.getItem(getBillsKey(customerId))) || []; } catch { return []; }
   }
 
-  function getBillsKey(customerId){ return BILLS_KEY_PREFIX + customerId; }
-  function getBills(customerId){
-    try {
-      const raw = localStorage.getItem(getBillsKey(customerId));
-      return raw ? JSON.parse(raw) : [];
-    } catch {
-      return [];
-    }
-  }
-  function setBills(customerId, bills){
+  function setBills(customerId, bills) {
     try { localStorage.setItem(getBillsKey(customerId), JSON.stringify(bills)); } catch {}
   }
 
@@ -285,9 +305,11 @@
   function formatDateDisplay(d) {
     return d.toLocaleDateString("en-GB", { day: "2-digit", month: "long", year: "numeric" });
   }
+
   function formatDateShort(d) {
     return `${String(d.getDate()).padStart(2,"0")}-${String(d.getMonth()+1).padStart(2,"0")}-${d.getFullYear()}`;
   }
+
   function setDaysLabel(start, end) {
     const diff = Math.round((end - start) / 86400000) + 1;
     daysLabel.textContent = diff > 0 ? `કુલ ${diff} દિવસનું હિસાબ` : "";
@@ -310,7 +332,7 @@
   }
 
   function makeAutoFilename() {
-    const name = ACTIVE_CUSTOMER?.displayName ? ACTIVE_CUSTOMER.displayName : "Customer";
+    const name = activeCustomer?.displayName ? activeCustomer.displayName : "Customer";
     const fromVal = fromDateInput.value;
     const toVal = toDateInput.value;
 
@@ -323,13 +345,6 @@
     return `${safeFileNamePart(name)}_${toDDMMYYYY(fromVal)}_to_${toDDMMYYYY(toVal)}.png`;
   }
 
-  async function getActiveCustomer() {
-    const id = getActiveCustomerId();
-    if (!id) return null;
-    const customers = await listCustomers();
-    return (customers || []).find(c => c.customerId === id) || null;
-  }
-
   async function loadEntriesMap(customerId, fromIso, toIso) {
     const rows = await listEntriesInRange(customerId, fromIso, toIso);
     const map = {};
@@ -337,9 +352,10 @@
     return map;
   }
 
+  // ✅ OLD FEATURE: create rows table (but entries now come from Cloud)
   async function createRows() {
     const customerId = getActiveCustomerId();
-    if (!customerId) return (window.location.href = "customers.html");
+    if (!customerId) return alert("No active customer. Please select customer first.");
 
     const fromVal = fromDateInput.value;
     const toVal = toDateInput.value;
@@ -356,8 +372,8 @@
     const entriesMap = await loadEntriesMap(customerId, fromVal, toVal);
 
     entriesBody.innerHTML = "";
-    let d = new Date(start);
 
+    let d = new Date(start);
     const defaultRate = parseFloat(defaultRateInput.value);
     const useDefaultRate = !isNaN(defaultRate);
 
@@ -453,7 +469,8 @@
     return `${yyyy}-${mm.padStart(2,"0")}-${dd.padStart(2,"0")}`;
   }
 
-  async function syncReportEditsToCloud(customerId) {
+  // ✅ OLD FEATURE: sync report edits into storage (now: Cloud)
+  async function syncReportEditsToDailyEntriesCloud(customerId) {
     const t = todayIso();
     const ops = [];
 
@@ -477,6 +494,7 @@
     await Promise.all(ops);
   }
 
+  // ✅ OLD BILL LOGIC preserved (local)
   function upsertBillForCurrentRange(customerId) {
     const fromVal = fromDateInput.value;
     const toVal = toDateInput.value;
@@ -550,7 +568,8 @@
     if (!customerId) return null;
     if (summaryCard.style.display === "none") return null;
 
-    await syncReportEditsToCloud(customerId);
+    // ✅ sync + bill (same as old, but cloud sync)
+    await syncReportEditsToDailyEntriesCloud(customerId);
     upsertBillForCurrentRange(customerId);
 
     const exportCard = buildExportCard();
@@ -562,9 +581,11 @@
     if (!blob) return null;
 
     const file = new File([blob], filename, { type: "image/png" });
+
     lastExportFile = file;
     lastExportFilename = filename;
     whatsappBtn.disabled = false;
+
     return file;
   }
 
@@ -580,37 +601,65 @@
     URL.revokeObjectURL(url);
   }
 
+  // ✅ OLD WhatsApp flow preserved
   async function sendOnWhatsApp() {
     if (!lastExportFile) {
       const f = await generateImageFile();
       if (!f) return;
     }
 
+    // 1) share sheet (best)
     try {
       if (navigator.canShare && navigator.canShare({ files: [lastExportFile] })) {
+        const msgText =
+          `તમારો રિપોર્ટ કાર્ડ તૈયાર છે.\n` +
+          `${activeCustomer?.displayName ? "Customer: " + activeCustomer.displayName + "\n" : ""}` +
+          `${fromDateInput.value && toDateInput.value ? "Range: " + fromDateInput.value + " to " + toDateInput.value : ""}`;
+
         await navigator.share({
           title: "Report Card",
-          text: "Here is your report card image.",
+          text: msgText,
           files: [lastExportFile]
         });
         return;
       }
     } catch {}
 
+    // 2) direct chat
     const msg = encodeURIComponent(
-      `Report ready: ${lastExportFilename || "report-card.png"}\n(Attach the downloaded image in WhatsApp.)`
+      `તમારો રિપોર્ટ કાર્ડ તૈયાર છે.\nFile: ${lastExportFilename || "report-card.png"}`
     );
+
+    if (customerPhoneDigits) {
+      window.open(`https://wa.me/91${customerPhoneDigits}?text=${msg}`, "_blank");
+      alert("WhatsApp opened to the customer. Attach the image (if not auto-shared) and press Send.");
+      return;
+    }
+
+    // 3) generic
     window.open(`https://wa.me/?text=${msg}`, "_blank");
-    alert("Your browser may not support sharing image directly. Downloaded image attach manually in WhatsApp.");
+    alert("Customer phone not available. WhatsApp opened—please choose contact and send.");
   }
 
+  // ✅ Bind buttons (fixes your “buttons not working” issue)
   generateRowsBtn.addEventListener("click", createRows);
   downloadImgBtn.addEventListener("click", downloadImage);
   whatsappBtn.addEventListener("click", sendOnWhatsApp);
 
-  // ✅ Boot
+  // ✅ Logout fixed (does not depend on inline onclick)
+  logoutBtn.addEventListener("click", async () => {
+    try {
+      // if your logout.js already provides window.acsLogout, use it
+      if (window.acsLogout) return window.acsLogout();
+      await signOut(auth);
+    } catch {}
+    window.location.href = "login.html";
+  });
+
+  // ✅ Boot: date max must work
   applyDateLimits();
 
+  // ✅ Load active customer + banner once auth is ready
   onAuthStateChanged(auth, async (user) => {
     if (!user) return;
 
@@ -620,20 +669,22 @@
       return;
     }
 
-    ACTIVE_CUSTOMER = await getActiveCustomer();
+    activeCustomer = await getActiveCustomerCloudOrLocal();
 
-    if (ACTIVE_CUSTOMER) {
-      acName.textContent = ACTIVE_CUSTOMER.displayName || "Unnamed customer";
-      acSub.textContent  = ACTIVE_CUSTOMER.phone ? `📞 ${ACTIVE_CUSTOMER.phone}` : "";
+    customerPhoneDigits = activeCustomer?.phone ? String(activeCustomer.phone).replace(/\D/g, "") : "";
+
+    if (activeCustomer) {
+      acName.textContent = activeCustomer.displayName || "Unnamed customer";
+      acSub.textContent  = activeCustomer.phone ? `📞 ${activeCustomer.phone}` : "";
       customerLine1.textContent =
-        `Customer: ${ACTIVE_CUSTOMER.displayName || "Unnamed"}`
-        + (ACTIVE_CUSTOMER.phone ? ` (${ACTIVE_CUSTOMER.phone})` : "");
+        `Customer: ${activeCustomer.displayName || "Unnamed"}`
+        + (activeCustomer.phone ? ` (${activeCustomer.phone})` : "");
     } else {
       acName.textContent = "Unknown customer";
-      acSub.textContent = "";
+      acSub.textContent  = "";
       customerLine1.textContent = "Customer: Unknown";
     }
   });
 </script>
 </body>
-  </html>
+</html>
