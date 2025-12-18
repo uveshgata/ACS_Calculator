@@ -3,10 +3,7 @@
 // Path: admins/{uid}/customers/{customerId}/entries/{dateIso}
 
 import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-app.js";
-import {
-  getAuth,
-  onAuthStateChanged
-} from "https://www.gstatic.com/firebasejs/10.12.4/firebase-auth.js";
+import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-auth.js";
 
 import {
   getFirestore,
@@ -19,6 +16,7 @@ import {
   query,
   orderBy,
   limit,
+  where,
   serverTimestamp
 } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore.js";
 
@@ -87,7 +85,6 @@ export async function upsertEntry(customerId, dateIso, data) {
   const kg = Number(data?.kg);
   const rate = Number(data?.rate);
 
-  // Allow 0/blank logic decisions later in UI; but store only valid numbers
   if (!Number.isFinite(kg) || !Number.isFinite(rate)) {
     throw new Error("Invalid kg/rate");
   }
@@ -161,10 +158,6 @@ export async function getEntriesRange(customerId, fromIso, toIso) {
   const to = requireDateIso(toIso);
   if (from > to) throw new Error("fromIso > toIso");
 
-  // Query by dateIso using ordering and bounds
-  // NOTE: This requires Firestore index on dateIso (usually automatic for single-field)
-  const { where } = await import("https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore.js");
-
   const qy = query(
     entriesColRef(uid, cid),
     orderBy("dateIso", "asc"),
@@ -179,4 +172,26 @@ export async function getEntriesRange(customerId, fromIso, toIso) {
     if (data?.dateIso) map[data.dateIso] = data;
   });
   return map;
+}
+
+/* ============================================================
+   ✅ COMPATIBILITY EXPORTS (Fixes your index.html import issue)
+   Some pages expect: listEntriesInRange(...)
+   We provide it here without breaking your existing functions.
+   ============================================================ */
+
+/**
+ * listEntriesInRange(customerId, fromIso, toIso)
+ * Returns ARRAY sorted by dateIso asc.
+ */
+export async function listEntriesInRange(customerId, fromIso, toIso) {
+  const map = await getEntriesRange(customerId, fromIso, toIso);
+  return Object.keys(map).sort().map(k => map[k]);
+}
+
+/**
+ * If your index wants a MAP but named differently, use this.
+ */
+export async function listEntriesInRangeMap(customerId, fromIso, toIso) {
+  return getEntriesRange(customerId, fromIso, toIso);
 }
