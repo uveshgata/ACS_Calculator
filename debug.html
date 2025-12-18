@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>ACS Debug</title>
+  <style>
+    body{font-family:system-ui,Segoe UI,Arial;margin:16px;background:#0b1220;color:#e5e7eb}
+    .card{background:#111827;border:1px solid #243042;border-radius:14px;padding:14px;max-width:900px}
+    .row{display:flex;gap:10px;flex-wrap:wrap}
+    button{padding:10px 12px;border-radius:10px;border:none;font-weight:800;cursor:pointer}
+    .ok{color:#34d399}
+    .bad{color:#fb7185}
+    code{background:#0b1220;padding:2px 6px;border-radius:8px}
+    pre{white-space:pre-wrap;word-break:break-word;background:#0b1220;padding:12px;border-radius:12px;border:1px solid #243042}
+    a{color:#93c5fd}
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h2>ACS Debug Page</h2>
+    <div id="meta"></div>
+
+    <div class="row" style="margin:10px 0;">
+      <button id="btnTest">Click Test Button</button>
+      <button id="btnReload" onclick="location.reload()">Reload</button>
+    </div>
+
+    <div id="status"></div>
+    <pre id="log">Starting...\n</pre>
+  </div>
+
+<script type="module">
+  const logEl = document.getElementById("log");
+  const statusEl = document.getElementById("status");
+  const metaEl = document.getElementById("meta");
+
+  function log(msg){
+    logEl.textContent += msg + "\n";
+    console.log(msg);
+  }
+  function ok(msg){
+    statusEl.innerHTML += `<div class="ok">✅ ${msg}</div>`;
+    log(`✅ ${msg}`);
+  }
+  function bad(msg){
+    statusEl.innerHTML += `<div class="bad">❌ ${msg}</div>`;
+    log(`❌ ${msg}`);
+  }
+
+  // META (proves you’re on correct page + not cached)
+  metaEl.innerHTML = `
+    <div>URL: <code>${location.href}</code></div>
+    <div>Time: <code>${new Date().toISOString()}</code></div>
+  `;
+
+  ok("Module script executed (type=module is running)");
+
+  // Button wiring test
+  document.getElementById("btnTest").addEventListener("click", () => {
+    alert("Button click works ✅ (event listeners are working)");
+  });
+  ok("Event listener attached to test button");
+
+  // Files to test (edit if your files are inside a folder)
+  const filesToFetch = [
+    "./index.html",
+    "./firebase.js",
+    "./auth-guard.js",
+    "./db-customers.js",
+    "./db-entries.js",
+    "./session.js",
+    "./session-lock.js",
+    "./session-heartbeat.js",
+    "./logout.js"
+  ];
+
+  ok("Testing fetch() for important files (status 200 means path is correct)");
+  for (const f of filesToFetch) {
+    try{
+      const r = await fetch(f, { cache: "no-store" });
+      if (r.ok) ok(`fetch ${f} -> ${r.status}`);
+      else bad(`fetch ${f} -> ${r.status}`);
+    }catch(e){
+      bad(`fetch ${f} failed: ${e?.message || e}`);
+    }
+  }
+
+  // Import tests (this is the real killer test)
+  async function testImport(path){
+    try{
+      const m = await import(path);
+      ok(`import ${path} OK. exports: ${Object.keys(m).join(", ") || "(none)"}`);
+      return m;
+    }catch(e){
+      bad(`import ${path} FAILED: ${e?.message || e}`);
+      console.error(e);
+      return null;
+    }
+  }
+
+  ok("Now testing module imports (exact failure will show below)");
+  const fb = await testImport("./firebase.js");
+  await testImport("./db-customers.js");
+  await testImport("./db-entries.js");
+
+  // Firebase sanity check (only checks exports exist, doesn’t login)
+  if (fb) {
+    if ("auth" in fb) ok("firebase.js exports 'auth' ✅");
+    else bad("firebase.js does NOT export 'auth' (index/auth-guard may be importing wrong name)");
+
+    if ("db" in fb) ok("firebase.js exports 'db' ✅");
+    else bad("firebase.js does NOT export 'db' (db-*.js may be importing wrong name)");
+  }
+
+  ok("Debug finished. Tell me which ❌ lines you see.");
+</script>
+</body>
+</html>
