@@ -321,6 +321,20 @@
       return s === "loading" || s === "success";
     });
   }
+  // ✅ NEW: Block Generate Rows if selected range is already inside ANY bill (pending/loading/success)
+  function isRangeInAnyBill(customerId, fromIso, toIso) {
+    if (!fromIso || !toIso) return false;
+    const bills = Array.isArray(billsCache) ? billsCache : [];
+  
+    return bills.some(b => {
+      const from = b?.from;
+      const to   = b?.to;
+      if (!from || !to) return false;
+  
+      // overlap check: [fromIso..toIso] overlaps [from..to]
+      return !(toIso < from || to < fromIso);
+    });
+  }
 
   function formatDateDisplay(d) {
     return d.toLocaleDateString("en-GB", { day: "2-digit", month: "long", year: "numeric" });
@@ -395,7 +409,11 @@
 
       const t = todayIso();
       if (fromVal > t || toVal > t) return alert("Future dates are not allowed.");
-
+      // ✅ BLOCK: if this range is already in ANY bill, do not generate rows
+      if (isRangeInAnyBill(customerId, fromVal, toVal)) {
+        return alert("This date range is already in Bills. You cannot generate rows for this range.");
+      }
+      
       const start = new Date(fromVal);
       const end = new Date(toVal);
 
