@@ -1,184 +1,345 @@
 /* ===============================
-   INDEX.CSS – Report Card Styles
+   INDEX.CSS – Report Card Styles (ENHANCED)
    Used ONLY by index.html
    =============================== */
 
-/* Controls panel */
-.controls {
-  background: #ffffffaa;
-  backdrop-filter: blur(8px);
-  padding: 14px;
-  border-radius: 14px;
-  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.06);
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-  margin-bottom: 16px;
+/* --------- small variables (keeps same UI look) --------- */
+:root{
+  --card-bg: #ffffffaa;
+  --card-solid: #ffffff;
+  --border: #e5e7eb;
+  --text: #111827;
+  --muted: #6b7280;
+  --shadow-soft: 0 8px 20px rgba(0,0,0,0.06);
+  --shadow-strong: 0 12px 30px rgba(0,0,0,0.12);
+  --radius-lg: 24px;
+  --radius-md: 14px;
+  --radius-sm: 10px;
+  --accent-a: #8da4f3;
+  --accent-b: #4f46e5;
 }
 
-.field {
+/* =========================================================
+   Active customer banner (moved from <style>)
+   ========================================================= */
+.active-customer-banner{
+  background:#ffffff;
+  border:1px solid var(--border);
+  border-radius:14px;
+  padding:10px 12px;
+  box-shadow: 0 6px 16px rgba(0,0,0,0.06);
+  margin-bottom:12px;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  gap:10px;
+}
+.ac-left{ display:flex; flex-direction:column; gap:2px; min-width:0; }
+.ac-title{
+  font-size:12px;
+  color:var(--muted);
+  font-weight:700;
+  letter-spacing:.02em;
+  text-transform:uppercase;
+}
+.ac-name{
+  font-size:15px;
+  font-weight:800;
+  color:var(--text);
+  line-height:1.2;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  max-width: 320px;
+}
+.ac-sub{
+  font-size:12px;
+  color:var(--muted);
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  max-width: 320px;
+}
+.ac-btn{
+  padding:8px 12px;
+  border-radius:999px;
+  border:none;
+  background:#e5e7eb;
+  color:var(--text);
+  font-weight:700;
+  cursor:pointer;
+  white-space:nowrap;
+}
+.ac-btn:hover{ filter:brightness(.98); }
+.ac-btn:active{ transform: translateY(1px); }
+
+/* =========================================================
+   Controls panel
+   ========================================================= */
+.controls{
+  background: var(--card-bg);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  padding: 14px;
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-soft);
+  border: 1px solid rgba(255,255,255,0.4);
+  display:flex;
+  flex-wrap:wrap;
+  gap:10px;
+  margin-bottom:16px;
+}
+
+/* Each field */
+.field{
   flex: 1 1 150px;
   min-width: 140px;
 }
-
-.field label {
-  display: block;
-  font-size: 13px;
-  margin-bottom: 4px;
-  color: #374151;
+.field label{
+  display:block;
+  font-size:13px;
+  margin-bottom:4px;
+  color:#374151;
+  font-weight:700;
 }
 
-/* Buttons column inside controls */
-.buttons {
+/* Buttons column */
+.buttons{
   flex: 1 1 150px;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
+  display:flex;
+  flex-direction:column;
+  gap:8px;
 }
 
-/* ===============================
+/* Make buttons easier on Android (tap target) */
+.buttons button,
+.share-row button{
+  min-height: 40px;
+}
+
+/* =========================================================
+   Share row (moved from <style>)
+   ========================================================= */
+.share-row{
+  display:flex;
+  gap:10px;
+  margin-top:10px;
+  flex-wrap:wrap;
+  width:100%;
+}
+.share-row button{
+  border:none;
+  border-radius:999px;
+  padding:10px 14px;
+  font-size:14px;
+  font-weight:700;
+  cursor:pointer;
+  transition:.15s;
+  width:100%;
+  flex:1 1 160px;
+}
+.btn-whatsapp{
+  background:#07ff5c;
+  color:#ffffff;
+}
+.btn-whatsapp:disabled{
+  opacity:.5;
+  cursor:not-allowed;
+}
+
+/* =========================================================
    Report Card Container
-   =============================== */
-
-#summaryCard {
-  width: 100%;
-  max-width: 420px;
-  min-height: 680px;
-  background: #ffffff;
-  border-radius: 24px;
-  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.12);
-  overflow: hidden;
+   ========================================================= */
+#summaryCard{
+  width:100%;
+  max-width:420px;
+  min-height:680px;
+  background: var(--card-solid);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-strong);
+  overflow:hidden;
   margin: 20px auto 0;
-  display: none;
-  flex-direction: column;
+  display:none;
+  flex-direction:column;
+  border: 1px solid rgba(17,24,39,0.06);
 }
 
-/* Header */
-.card-header {
+/* =========================================================
+   Header
+   ========================================================= */
+.card-header{
   padding: 22px 12px 18px;
-  background: linear-gradient(135deg, #8da4f3, #4f46e5);
-  color: white;
-  text-align: center;
+  background: linear-gradient(135deg, var(--accent-a), var(--accent-b));
+  color: #ffffff;
+  text-align:center;
+  position: relative;
 }
 
-.card-header h2 {
-  margin: 0;
-  font-size: 24px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
+/* Keep your typography same, just stable */
+.card-header h2{
+  margin:0;
+  font-size:24px;
+  font-weight:700;
+  letter-spacing:0.08em;
+}
+.card-header h3{
+  margin: 4px 0;
+  font-size:12px;
+  color:#f9e4bc;
 }
 
-.card-header h3 {
-  font-size: 12px;
-  color: #f9e4bc;
+/* Range line */
+.card-header .range{
+  margin-top:6px;
+  font-size:13px;
+  opacity:.95;
 }
 
-.card-header .range {
-  margin-top: 6px;
-  font-size: 13px;
-  opacity: 0.95;
+/* Your customer block in header */
+.customer-block{
+  margin-top:10px;
+  padding:10px 12px;
+  border-radius:14px;
+  background: rgba(255,255,255,0.14);
+  border: 1px solid rgba(255,255,255,0.25);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  text-align:left;
+}
+.customer-block .line1{
+  font-size:13px;
+  font-weight:800;
+  color:#ffffff;
+  letter-spacing:.01em;
 }
 
-/* ===============================
+/* Make the owner/mobile lines not overlap on small screens */
+.card-header h3[style*="float:left"],
+.card-header h3[style*="float:right"]{
+  display:inline-block;
+  width:49%;
+  margin: 6px 0 0;
+}
+@media (max-width: 420px){
+  .card-header h3[style*="float:left"],
+  .card-header h3[style*="float:right"]{
+    width:100%;
+    float:none !important;
+    text-align:center !important;
+  }
+}
+
+/* =========================================================
    Card Body / Table
-   =============================== */
-
-.card-body {
+   ========================================================= */
+.card-body{
   padding: 16px 16px 8px;
-  font-size: 14px;
-  flex: 1;
+  font-size:14px;
+  flex:1;
 }
 
-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 13px;
+/* Table */
+table{
+  width:100%;
+  border-collapse:collapse;
+  font-size:13px;
+  table-layout: fixed; /* prevents overflow jump on mobile */
 }
 
-thead th {
-  background: #f3f4ff;
-  color: #111827;
-  font-weight: 700;
-  padding: 8px 4px;
-  border-bottom: 1px solid #d1d5db;
+thead th{
+  background:#f3f4ff;
+  color:var(--text);
+  font-weight:700;
+  padding:8px 4px;
+  border-bottom:1px solid #d1d5db;
 }
 
-tbody td {
-  padding: 10px 4px;
-  text-align: center;
-  border-bottom: 1px solid #e5e7eb;
-  color: #374151;
+/* Prevent date column wrapping badly */
+thead th:nth-child(3),
+tbody td:nth-child(3){
+  width: 32%;
+}
+
+/* Rows */
+tbody td{
+  padding:10px 4px;
+  text-align:center;
+  border-bottom:1px solid var(--border);
+  color:#374151;
 }
 
 /* Inputs inside table */
-.inputs-wrapper {
-  display: flex;
-  justify-content: center;
-  gap: 4px;
+.inputs-wrapper{
+  display:flex;
+  justify-content:center;
+  gap:4px;
+  align-items:center;
 }
 
-.inputs-wrapper input {
-  width: 62px;
-  padding: 4px;
-  border-radius: 6px;
-  border: 1px solid #d1d5db;
-  font-size: 12px;
+/* Better mobile tap + no zoom-jank */
+.inputs-wrapper input{
+  width:62px;
+  padding:4px;
+  border-radius:6px;
+  border:1px solid #d1d5db;
+  font-size:12px;
+  background:#ffffff;
+  outline:none;
+}
+.inputs-wrapper input:focus{
+  border-color:#6366f1;
+  box-shadow: 0 0 0 2px rgba(99,102,241,.18);
 }
 
-/* ===============================
+/* =========================================================
    Table Footer
-   =============================== */
-
-tfoot td {
-  padding: 8px 4px;
-  color: #111827;
+   ========================================================= */
+tfoot td{
+  padding:8px 4px;
+  color:var(--text);
 }
 
-tfoot .total-label {
-  text-align: right;
-  padding-right: 10px;
-  font-weight: 700;
-  border-top: 2px solid #d1d5db;
+tfoot .total-label{
+  text-align:right;
+  padding-right:10px;
+  font-weight:700;
+  border-top:2px solid #d1d5db;
+}
+tfoot .total-value{
+  font-weight:800;
+  font-size:14px;
+  border-top:2px solid #d1d5db;
+}
+tfoot .days-label{
+  padding-top:4px;
+  font-size:12px;
+  color:var(--muted);
+  text-align:center;
 }
 
-tfoot .total-value {
-  font-weight: 800;
-  font-size: 14px;
-  border-top: 2px solid #d1d5db;
-}
-
-tfoot .days-label {
-  padding-top: 4px;
-  font-size: 12px;
-  color: #6b7280;
-  text-align: center;
-}
-
-/* ===============================
+/* =========================================================
    Card Footer
-   =============================== */
-
-.card-footer {
-  padding: 8px 16px 14px;
-  text-align: center;
-  font-size: 11px;
-  color: #9ca3af;
-  border-top: 1px solid #e5e7eb;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
+   ========================================================= */
+.card-footer{
+  padding:8px 16px 14px;
+  text-align:center;
+  font-size:11px;
+  color:#9ca3af;
+  border-top:1px solid var(--border);
+  display:flex;
+  flex-direction:column;
+  gap:2px;
 }
-
-.card-footer .footer-line:last-child {
-  font-weight: 600;
+.card-footer .footer-line:last-child{
+  font-weight:600;
   color: #4f46e5;
 }
 
-/* ===============================
-   Export (Image generation)
-   =============================== */
-
-.export-card {
+/* =========================================================
+   Export (Image generation) – keep fixed 420px
+   IMPORTANT: DO NOT make this responsive, image layout must remain stable.
+   ========================================================= */
+.export-card{
   position: fixed;
   left: -9999px;
   top: 0;
@@ -191,12 +352,55 @@ tfoot .days-label {
   flex-direction: column;
 }
 
-/* ===============================
-   Mobile tweaks
-   =============================== */
-
-@media (max-width: 480px) {
-  #summaryCard {
-    max-width: 100%;
+/* =========================================================
+   Mobile tweaks (Android)
+   ========================================================= */
+@media (max-width: 480px){
+  /* Controls become cleaner stacked */
+  .controls{
+    padding:12px;
+    gap:10px;
   }
+
+  .field{
+    flex: 1 1 100%;
+    min-width: 0;
+  }
+
+  .buttons{
+    flex: 1 1 100%;
+  }
+
+  /* Report card fits screen */
+  #summaryCard{
+    max-width:100%;
+    min-height: unset;
+  }
+
+  .card-body{
+    padding: 14px 12px 8px;
+  }
+
+  /* Inputs slightly larger for touch */
+  .inputs-wrapper input{
+    width: 68px;
+    font-size: 13px;
+    padding: 6px;
+  }
+}
+
+/* Super small screens */
+@media (max-width: 360px){
+  .inputs-wrapper input{
+    width: 62px;
+  }
+  thead th,
+  tbody td{
+    padding: 8px 3px;
+  }
+}
+
+/* Optional: reduce motion for accessibility */
+@media (prefers-reduced-motion: reduce){
+  *{ transition: none !important; }
 }
