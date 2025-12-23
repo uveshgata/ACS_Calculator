@@ -443,7 +443,7 @@
 
       const dateSpan = document.createElement("span");
       dateSpan.className = "entry-date";
-      dateSpan.textContent = `${dateIso} (${ddmmyyyy(dateIso)})`;
+      dateSpan.textContent = ddmmyyyy(dateIso);
       left.appendChild(dateSpan);
 
       if (status) {
