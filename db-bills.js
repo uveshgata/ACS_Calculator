@@ -18,7 +18,8 @@ import {
   limit,
   serverTimestamp,
   increment,
-  writeBatch
+  writeBatch,
+  deleteDoc
 } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-firestore.js";
 
 // ✅ Same config as your project
@@ -161,6 +162,7 @@ export async function upsertBillFromReport(customerId, { from, to, total }) {
 
 /**
  * Helper for index.html to check locking using cached bills list.
+ * ✅ UPDATED: once date is part of ANY bill (pending/loading/success) => lock
  */
 export function isDateLockedByBills(billsArray, dateIso) {
   const d = String(dateIso || "").trim();
@@ -168,11 +170,10 @@ export function isDateLockedByBills(billsArray, dateIso) {
 
   const bills = Array.isArray(billsArray) ? billsArray : [];
 
+  // ✅ any bill covering the date locks it (no matter status)
   return bills.some(b => {
     if (!b?.from || !b?.to) return false;
-    if (!(b.from <= d && d <= b.to)) return false;
-    const s = String(b.status || statusFromAmounts(b.total, b.paid));
-    return s === "loading" || s === "success";
+    return (b.from <= d && d <= b.to);
   });
 }
 
@@ -233,6 +234,7 @@ export async function listBills(customerId, take = 200) {
 
 /**
  * Add payment to a bill (increments paid).
+ * ✅ UPDATED: hard restriction: cannot pay more than remaining
  */
 export async function addPayment(customerId, billId, amount) {
   const cid = requireCustomerId(customerId);
@@ -246,9 +248,18 @@ export async function addPayment(customerId, billId, amount) {
   const snap = await getDoc(ref);
   if (!snap.exists()) throw new Error("Bill not found");
 
-  const bill = snap.data();
-  const newPaid = Number(bill.paid || 0) + amt;
+  const bill = snap.data() || {};
   const total = Number(bill.total || 0);
+  const currentPaid = Number(bill.paid || 0);
+
+  const remaining = Math.max(total - currentPaid, 0);
+
+  // ✅ hard restriction
+  if (amt > remaining) {
+    throw new Error(`Payment exceeds remaining amount (₹${Math.round(remaining)}).`);
+  }
+
+  const newPaid = currentPaid + amt;
   const status = statusFromAmounts(total, newPaid);
 
   await updateDoc(ref, {
@@ -257,6 +268,50 @@ export async function addPayment(customerId, billId, amount) {
     updatedAt: serverTimestamp()
   });
 
+  return true;
+}
+
+/**
+ * ✅ NEW: Set paid amount directly (for corrections)
+ * Only modifies paid (0..total) and recalculates status.
+ */
+export async function setPaidAmount(customerId, billId, newPaid) {
+  const cid = requireCustomerId(customerId);
+  const bid = requireBillId(billId);
+  const uid = await getUidOrThrow();
+
+  const ref = billDocRef(uid, cid, bid);
+  const snap = await getDoc(ref);
+  if (!snap.exists()) throw new Error("Bill not found");
+
+  const bill = snap.data() || {};
+  const total = Number(bill.total || 0);
+
+  const p = Number(newPaid);
+  if (!Number.isFinite(p) || p < 0) throw new Error("Invalid paid amount");
+  if (p > total) throw new Error(`Paid cannot be more than total (₹${Math.round(total)}).`);
+
+  const status = statusFromAmounts(total, p);
+
+  await updateDoc(ref, {
+    paid: p,
+    status,
+    updatedAt: serverTimestamp()
+  });
+
+  return true;
+}
+
+/**
+ * ✅ NEW: Delete one bill
+ */
+export async function deleteBill(customerId, billId) {
+  const cid = requireCustomerId(customerId);
+  const bid = requireBillId(billId);
+  const uid = await getUidOrThrow();
+
+  const ref = billDocRef(uid, cid, bid);
+  await deleteDoc(ref);
   return true;
 }
 
