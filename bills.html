@@ -41,10 +41,23 @@
 <script type="module" src="logout.js"></script>
 
 <!-- ✅ CLOUD Bills Logic -->
-<script type="module">
+
+ <script type="module">
   import { auth } from "./firebase.js";
-  import { onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-auth.js";
-  import { listBills, addPayment, clearBills } from "./db-bills.js";
+  import {
+    onAuthStateChanged,
+    signOut,
+    EmailAuthProvider,
+    reauthenticateWithCredential
+  } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-auth.js";
+
+  import {
+    listBills,
+    addPayment,
+    clearBills,
+    setPaidAmount,
+    deleteBill
+  } from "./db-bills.js";
 
   const ACTIVE_KEY = "acsActiveCustomerId";
 
@@ -66,8 +79,30 @@
   }
 
   function formatDateShort(dStr) {
-    // YYYY-MM-DD -> DD-MM-YYYY (same as your old)
+    // YYYY-MM-DD -> DD-MM-YYYY
     return String(dStr || "").split("-").reverse().join("-");
+  }
+
+  // ✅ Authorized action check (password re-auth)
+  async function requireAuthorization(){
+    const user = auth.currentUser;
+    if (!user || !user.email) {
+      alert("Not logged in.");
+      return false;
+    }
+
+    const pwd = prompt("Authorized action.\nEnter admin password:");
+    if (pwd === null) return false;
+
+    try {
+      const cred = EmailAuthProvider.credential(user.email, pwd);
+      await reauthenticateWithCredential(user, cred);
+      return true;
+    } catch (e) {
+      console.error(e);
+      alert("Authorization failed.");
+      return false;
+    }
   }
 
   async function refreshBills(){
@@ -98,7 +133,7 @@
     billsList.innerHTML = "";
     billsList.classList.remove("muted");
 
-    // newest first already, but keep your old style safety sort:
+    // newest first (safety sort)
     bills.sort((a, b) => {
       const ta = a.createdAt ? Date.parse(a.createdAt) : 0;
       const tb = b.createdAt ? Date.parse(b.createdAt) : 0;
@@ -106,6 +141,7 @@
     });
 
     bills.forEach((bill, index) => {
+      const billId = bill.id || bill.billId; // ✅ support both
       const total = Number(bill.total || 0);
       const paid  = Number(bill.paid || 0);
       const remaining = Math.max(total - paid, 0);
@@ -143,33 +179,100 @@
       amounts.textContent =
         `Total: ₹${total.toFixed(0)} | Paid: ₹${paid.toFixed(0)} | Remaining: ₹${remaining.toFixed(0)}`;
 
+      // ✅ Add Payment (hide if fully paid)
       const payBtn = document.createElement("button");
       payBtn.className = "pay-btn";
       payBtn.textContent = "Add payment";
 
+      if (remaining <= 0) {
+        payBtn.style.display = "none"; // ✅ hide when paid
+      }
+
       payBtn.addEventListener("click", async () => {
-        const input = prompt("Payment received now (₹):", "");
+        const input = prompt(`Payment received now (₹)\nMax: ₹${Math.round(remaining)}`, "");
         if (input === null) return;
 
         const amt = parseFloat(input);
-        if (isNaN(amt) || amt <= 0) {
+        if (!Number.isFinite(amt) || amt <= 0) {
           alert("Please enter a valid amount.");
           return;
         }
 
+        // ✅ Restrict: cannot pay more than remaining
+        if (amt > remaining) {
+          alert(`You cannot enter more than remaining amount (₹${Math.round(remaining)}).`);
+          return;
+        }
+
         try {
-          // Cloud: increment paid
-          await addPayment(customerId, bill.id || bill.billId, amt);
+          await addPayment(customerId, billId, amt);
           await refreshBills();
         } catch (e) {
           console.error(e);
-          alert("Payment failed. Please try again.");
+          alert(e?.message || "Payment failed. Please try again.");
+        }
+      });
+
+      // ✅ Edit Paid (authorized) — ONLY modifies paid amount
+      const editBtn = document.createElement("button");
+      editBtn.className = "pay-btn secondary";
+      editBtn.textContent = "Edit paid";
+
+      editBtn.addEventListener("click", async () => {
+        const ok = await requireAuthorization();
+        if (!ok) return;
+
+        const input = prompt(
+          `Set PAID amount (₹)\nTotal: ₹${Math.round(total)}\nCurrent Paid: ₹${Math.round(paid)}`,
+          String(Math.round(paid))
+        );
+        if (input === null) return;
+
+        const newPaid = parseFloat(input);
+        if (!Number.isFinite(newPaid) || newPaid < 0) {
+          alert("Invalid paid amount.");
+          return;
+        }
+        if (newPaid > total) {
+          alert(`Paid cannot be more than Total (₹${Math.round(total)}).`);
+          return;
+        }
+
+        try {
+          await setPaidAmount(customerId, billId, newPaid);
+          await refreshBills();
+        } catch (e) {
+          console.error(e);
+          alert(e?.message || "Edit failed.");
+        }
+      });
+
+      // ✅ Delete Bill (authorized)
+      const delBtn = document.createElement("button");
+      delBtn.className = "pay-btn danger";
+      delBtn.textContent = "Delete bill";
+
+      delBtn.addEventListener("click", async () => {
+        const ok = await requireAuthorization();
+        if (!ok) return;
+
+        const sure = confirm(`Delete this bill?\n${bill.from} to ${bill.to}`);
+        if (!sure) return;
+
+        try {
+          await deleteBill(customerId, billId);
+          await refreshBills();
+        } catch (e) {
+          console.error(e);
+          alert(e?.message || "Delete failed.");
         }
       });
 
       meta.appendChild(pill);
       meta.appendChild(amounts);
       meta.appendChild(payBtn);
+      meta.appendChild(editBtn);
+      meta.appendChild(delBtn);
 
       item.appendChild(header);
       item.appendChild(meta);
@@ -180,6 +283,10 @@
   clearBillsBtn.addEventListener("click", async () => {
     const customerId = getActiveCustomerId();
     if (!customerId) return window.location.href = "customers.html";
+
+    // ✅ Protect this too
+    const okAuth = await requireAuthorization();
+    if (!okAuth) return;
 
     if (!confirm("Clear ALL bills for this customer?")) return;
 
@@ -192,7 +299,7 @@
     }
   });
 
-  // ✅ Logout safety (in case acsLogout not available)
+  // ✅ Logout safety
   logoutBtn.addEventListener("click", async () => {
     if (window.acsLogout) return; // logout.js will handle
     try { await signOut(auth); } catch {}
@@ -204,6 +311,6 @@
     if (!user) return;
     await refreshBills();
   });
-</script>
+      </script>             
 </body>
 </html>
